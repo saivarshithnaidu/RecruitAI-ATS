@@ -15,8 +15,9 @@ export const authOptions: NextAuthOptions = {
             clientId: process.env.GOOGLE_CLIENT_ID || "",
             clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
             async profile(profile) {
-                // Strict Role Assignment based on Email
-                const isAdmin = ALLOWED_ADMINS.includes(profile.email);
+                // Strict Role Assignment based on Email (Case Insensitive)
+                const email = profile.email?.toLowerCase();
+                const isAdmin = ALLOWED_ADMINS.includes(email);
                 const role = isAdmin ? ROLES.ADMIN : ROLES.CANDIDATE;
 
                 return {
@@ -97,6 +98,7 @@ export const authOptions: NextAuthOptions = {
     callbacks: {
         async jwt({ token, user, trigger, session }) {
             if (user) {
+                console.log(`[Auth] JWT Callback: User ${user.email} has role ${user.role}`);
                 token.sub = user.id
                 // @ts-ignore
                 token.role = user.role
