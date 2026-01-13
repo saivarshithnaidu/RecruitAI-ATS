@@ -108,3 +108,49 @@ export async function verifyEmail(token: string) {
         return { error: err.message };
     }
 }
+
+export async function resetPasswordAction(token: string, password: string) {
+    if (!token || !password || password.length < 6) {
+        return { error: "Invalid input" };
+    }
+
+    try {
+        // Hash Password (BCRYPT)
+        const passwordHash = await bcrypt.hash(password.trim(), 10);
+
+        // Verify User via Supabase
+        const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+
+        if (userError || !user) {
+            console.error("Reset Password Action: Invalid Token", userError);
+            return { error: "Session expired. Please click the reset link again." };
+        }
+
+        // Update Supabase Auth User
+        const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+            password: password
+        });
+
+        if (updateAuthError) {
+            console.error("Failed to update Supabase Auth User:", updateAuthError);
+            return { error: "Failed to update account credentials." };
+        }
+
+        // Update Profiles Table (CRITICAL for CredentialsProvider)
+        const { error: updateProfileError } = await supabaseAdmin
+            .from('profiles')
+            .update({ password_hash: passwordHash })
+            .eq('id', user.id);
+
+        if (updateProfileError) {
+            console.error("Failed to update Profile hash:", updateProfileError);
+            return { error: "Failed to sync password. Please try again." };
+        }
+
+        return { success: true };
+
+    } catch (e: any) {
+        console.error("Reset Password Exception:", e);
+        return { error: e.message };
+    }
+}

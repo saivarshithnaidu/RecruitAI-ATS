@@ -8,15 +8,21 @@ export default withAuth(
         const pathname = req.nextUrl.pathname
 
         // 1. Admin Protection
-        if (pathname.startsWith("/admin")) {
+        if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
             if (role !== "ADMIN") {
+                if (pathname.startsWith("/api")) {
+                    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+                }
                 return NextResponse.redirect(new URL(role === "CANDIDATE" ? "/candidate/application" : "/", req.url))
             }
         }
 
         // 2. Candidate Protection
-        if (pathname.startsWith("/candidate")) {
+        if (pathname.startsWith("/candidate") || pathname.startsWith("/api/candidate")) {
             if (role !== "CANDIDATE") {
+                if (pathname.startsWith("/api")) {
+                    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+                }
                 return NextResponse.redirect(new URL(role === "ADMIN" ? "/admin/dashboard" : "/", req.url))
             }
         }
@@ -46,4 +52,16 @@ export default withAuth(
     }
 )
 
-export const config = { matcher: ["/admin/:path*", "/candidate/:path*", "/apply/:path*"] }
+export const config = {
+    matcher: [
+        /*
+         * Match all request paths except for the ones starting with:
+         * - api/auth (auth routes)
+         * - _next/static (static files)
+         * - _next/image (image optimization files)
+         * - favicon.ico (favicon file)
+         * - public (public folder)
+         */
+        "/((?!api/auth|_next/static|_next/image|favicon.ico|public).*)",
+    ]
+}

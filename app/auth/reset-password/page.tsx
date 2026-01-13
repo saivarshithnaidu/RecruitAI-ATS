@@ -62,9 +62,19 @@ export default function ResetPasswordPage() {
         setMessage('');
 
         try {
-            const { error } = await supabaseClient.auth.updateUser({ password });
+            // Get session token
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session?.access_token) {
+                throw new Error("Session invalid");
+            }
 
-            if (error) throw error;
+            const { resetPasswordAction } = await import("@/app/actions/auth"); // Dynamic import to avoid client-side clutter issues if any, or just import at top? 
+            // Better to import at top but let's see if we can do it here or just add import. 
+            // Wait, server actions can be imported in client components.
+
+            const result = await resetPasswordAction(session.access_token, password);
+
+            if (result.error) throw new Error(result.error);
 
             setStatus('success');
             setMessage('Password updated successfully! Redirecting...');

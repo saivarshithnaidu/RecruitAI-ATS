@@ -7,6 +7,9 @@ import { ROLES, ALLOWED_ADMINS } from "@/lib/roles";
 import bcrypt from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
+    session: {
+        strategy: "jwt",
+    },
     providers: [
         GoogleProvider({
             clientId: process.env.GOOGLE_CLIENT_ID || "",
@@ -67,7 +70,8 @@ export const authOptions: NextAuthOptions = {
                     }
 
                     // 3. Strict Role Assignment
-                    const userRole = profile.role || 'candidate';
+                    const isAdmin = ALLOWED_ADMINS.includes(email);
+                    const userRole = isAdmin ? ROLES.ADMIN : ROLES.CANDIDATE;
 
                     console.log(`[Auth] Login Success for ${email}. Role: ${userRole}`);
 
@@ -80,6 +84,9 @@ export const authOptions: NextAuthOptions = {
                     }
                 } catch (error: any) {
                     console.error("[Auth] Authorization Error:", error.message);
+                    if (error.message === "Invalid credentials") {
+                        throw new Error("Invalid credentials");
+                    }
                     return null;
                 }
             }

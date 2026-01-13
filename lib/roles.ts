@@ -4,8 +4,7 @@ export const ROLES = {
 } as const;
 
 export const ALLOWED_ADMINS = [
-    'admin1@example.com',
-    'admin2@example.com',
+    'saivarshith8284@gmail.com',
     'recruitai@company.com',
     'recruitaiceo@company.com'
 ];
