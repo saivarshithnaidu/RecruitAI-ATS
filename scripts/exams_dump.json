@@ -1,0 +1,2664 @@
+[
+  {
+    "id": "1fc97cd6-ad44-4d08-be65-82fcc3df382a",
+    "title": "full stack",
+    "description": "",
+    "role": "Full Stack Developer",
+    "difficulty": "Medium",
+    "duration_minutes": 30,
+    "pass_mark": 40,
+    "created_by": "ceb8aa1a-e693-4611-b5d9-1023d1b7512c",
+    "created_at": "2026-01-06T16:27:19.234898+00:00",
+    "status": "DRAFT",
+    "error_message": null,
+    "questions_data": null
+  },
+  {
+    "id": "64850e49-56b2-44b9-9698-cac18f915c42",
+    "title": "full stack",
+    "description": "",
+    "role": "Full Stack Developer",
+    "difficulty": "Medium",
+    "duration_minutes": 30,
+    "pass_mark": 40,
+    "created_by": "ceb8aa1a-e693-4611-b5d9-1023d1b7512c",
+    "created_at": "2026-01-06T16:31:50.80898+00:00",
+    "status": "DRAFT",
+    "error_message": null,
+    "questions_data": null
+  },
+  {
+    "id": "0703fc2d-55cc-4524-a5db-80e4a596eaab",
+    "title": "Frontend",
+    "description": "frontend devloper",
+    "role": "Frontend Developer",
+    "difficulty": "Medium",
+    "duration_minutes": 60,
+    "pass_mark": 40,
+    "created_by": "ceb8aa1a-e693-4611-b5d9-1023d1b7512c",
+    "created_at": "2026-01-06T17:19:26.599166+00:00",
+    "status": "DRAFT",
+    "error_message": null,
+    "questions_data": null
+  },
+  {
+    "id": "1ce14ba9-41af-4640-a64d-5fe30c75f3f3",
+    "title": "Frontend",
+    "description": "fronrend exam",
+    "role": "Frontend Developer",
+    "difficulty": "Medium",
+    "duration_minutes": 60,
+    "pass_mark": 40,
+    "created_by": "ceb8aa1a-e693-4611-b5d9-1023d1b7512c",
+    "created_at": "2026-01-06T17:31:02.987801+00:00",
+    "status": "DRAFT",
+    "error_message": null,
+    "questions_data": null
+  },
+  {
+    "id": "2b081c0c-7069-466f-9f14-707ee7718c83",
+    "title": "FRNTEND DEVLOPER",
+    "description": "create exam on html,css,javascript,reactjs,nodejsmRestapi",
+    "role": "Frontend Developer",
+    "difficulty": "Hard",
+    "duration_minutes": 60,
+    "pass_mark": 15,
+    "created_by": "ceb8aa1a-e693-4611-b5d9-1023d1b7512c",
+    "created_at": "2026-01-11T16:14:20.827525+00:00",
+    "status": "DRAFT",
+    "error_message": null,
+    "questions_data": [
+      {
+        "id": "section_1",
+        "title": "Aptitude & Logical",
+        "questions": [
+          {
+            "id": 1,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "1",
+              "2",
+              "3",
+              "4"
+            ],
+            "question": "If 2x + 3 = 7, what is the value of x?",
+            "correct_answer": "2"
+          },
+          {
+            "id": 2,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "24",
+              "32",
+              "64",
+              "128"
+            ],
+            "question": "What is the next number in the sequence: 2, 4, 8, 16, __?",
+            "correct_answer": "32"
+          },
+          {
+            "id": 3,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "100 km/h",
+              "150 km/h",
+              "200 km/h",
+              "250 km/h"
+            ],
+            "question": "If a train travels 300 km in 3 hours, what is its speed?",
+            "correct_answer": "100 km/h"
+          },
+          {
+            "id": 4,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "20",
+              "30",
+              "40",
+              "50"
+            ],
+            "question": "What is 20% of 150?",
+            "correct_answer": "30"
+          },
+          {
+            "id": 5,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "15 cm²",
+              "25 cm²",
+              "50 cm²",
+              "100 cm²"
+            ],
+            "question": "If a rectangle has a length of 10 cm and a width of 5 cm, what is its area?",
+            "correct_answer": "50 cm²"
+          },
+          {
+            "id": 6,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "10",
+              "11",
+              "12",
+              "13"
+            ],
+            "question": "What is the square root of 144?",
+            "correct_answer": "12"
+          },
+          {
+            "id": 7,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "2",
+              "3",
+              "4",
+              "5"
+            ],
+            "question": "If 3a = 12, what is the value of a?",
+            "correct_answer": "4"
+          },
+          {
+            "id": 8,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Apple",
+              "Banana",
+              "Carrot",
+              "Orange"
+            ],
+            "question": "Which of the following is the odd one out? Apple, Banana, Carrot, Orange",
+            "correct_answer": "Carrot"
+          },
+          {
+            "id": 9,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Yes",
+              "No",
+              "Maybe",
+              "Cannot Determine"
+            ],
+            "question": "If all Roses are Flowers and some Flowers fade quickly, can we conclude that some Roses fade quickly?",
+            "correct_answer": "Cannot Determine"
+          },
+          {
+            "id": 10,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "18",
+              "20",
+              "24",
+              "36"
+            ],
+            "question": "What is the missing number in the series: 3, 6, 12, __, 48?",
+            "correct_answer": "24"
+          }
+        ]
+      },
+      {
+        "id": "section_2",
+        "title": "Verbal Ability",
+        "questions": [
+          {
+            "id": 11,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Cruel",
+              "Generous",
+              "Selfish",
+              "Stingy"
+            ],
+            "question": "Choose the correct synonym for 'Benevolent'.",
+            "correct_answer": "Generous"
+          },
+          {
+            "id": 12,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "He don’t like apples.",
+              "He doesn’t likes apples.",
+              "He doesn’t like apples.",
+              "He do not like apples."
+            ],
+            "question": "Identify the correct sentence.",
+            "correct_answer": "He doesn’t like apples."
+          },
+          {
+            "id": 13,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Clear",
+              "Opaque",
+              "Translucent",
+              "Visible"
+            ],
+            "question": "Choose the correct antonym for 'Transparent'.",
+            "correct_answer": "Opaque"
+          },
+          {
+            "id": 14,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "She is more smarter than him.",
+              "She is smarter than him.",
+              "She is most smarter than him.",
+              "She is more smart than him."
+            ],
+            "question": "Which of the following is grammatically correct?",
+            "correct_answer": "She is smarter than him."
+          },
+          {
+            "id": 15,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "in",
+              "on",
+              "at",
+              "under"
+            ],
+            "question": "Choose the correct preposition: The book is ___ the table.",
+            "correct_answer": "on"
+          }
+        ]
+      },
+      {
+        "id": "section_3",
+        "title": "Coding Challenge",
+        "questions": [
+          {
+            "id": 16,
+            "type": "coding",
+            "marks": 20,
+            "question": "Given an array of integers, return the indices of the two numbers such that they add up to a specific target.",
+            "test_cases": [
+              {
+                "input": "4\n2 7 11 15\n9",
+                "output": "0 1"
+              },
+              {
+                "input": "3\n3 2 4\n6",
+                "output": "1 2"
+              }
+            ],
+            "constraints": "2 <= N <= 10^4, -10^9 <= T <= 10^9",
+            "input_format": "First line contains an integer N, the size of the array. The second line contains N space-separated integers. The third line contains an integer T, the target sum.",
+            "output_format": "Output the indices of the two numbers separated by space. If no such pair exists, output 'No such pair'."
+          },
+          {
+            "id": 17,
+            "type": "coding",
+            "marks": 20,
+            "question": "Implement a function to validate if a given string is a palindrome. Ignore case, spaces, and special characters.",
+            "test_cases": [
+              {
+                "input": "A man, a plan, a canal, Panama",
+                "output": "true"
+              },
+              {
+                "input": "race a car",
+                "output": "false"
+              }
+            ],
+            "constraints": "1 <= length of string <= 10^5",
+            "input_format": "Input will be a single line containing a string.",
+            "output_format": "Output 'true' if the string is a palindrome, 'false' otherwise."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "cbd62985-4c18-41b6-920b-a7af179e674c",
+    "title": "Frontend technical assesment",
+    "description": "exam",
+    "role": "Frontend Developer",
+    "difficulty": "Medium",
+    "duration_minutes": 60,
+    "pass_mark": 40,
+    "created_by": "ceb8aa1a-e693-4611-b5d9-1023d1b7512c",
+    "created_at": "2026-01-06T18:09:09.281088+00:00",
+    "status": "AI_FAILED",
+    "error_message": "AI Generation Timed Out (90s). Please try again or check Ollama performance.",
+    "questions_data": null
+  },
+  {
+    "id": "7ded23c9-aaad-429e-b45d-ef9f0a749d57",
+    "title": "Frontend technical Assement",
+    "description": "create exam html,css,javascript,reactjs,mongodb",
+    "role": "Frontend Developer",
+    "difficulty": "Hard",
+    "duration_minutes": 60,
+    "pass_mark": 15,
+    "created_by": "ceb8aa1a-e693-4611-b5d9-1023d1b7512c",
+    "created_at": "2026-01-11T16:26:25.775842+00:00",
+    "status": "DRAFT",
+    "error_message": null,
+    "questions_data": [
+      {
+        "id": "section_1",
+        "title": "Aptitude & Logical",
+        "questions": [
+          {
+            "id": 1,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "10",
+              "15",
+              "20",
+              "25"
+            ],
+            "question": "If a car travels 120 km in 2 hours, what is its speed in m/s?",
+            "correct_answer": "B"
+          },
+          {
+            "id": 2,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "40",
+              "42",
+              "44",
+              "46"
+            ],
+            "question": "What is the next number in the series: 2, 6, 12, 20, 30, ...?",
+            "correct_answer": "B"
+          },
+          {
+            "id": 3,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "15 cm²",
+              "50 cm²",
+              "30 cm²",
+              "20 cm²"
+            ],
+            "question": "A rectangle has a length of 10 cm and a width of 5 cm. What is its area?",
+            "correct_answer": "B"
+          },
+          {
+            "id": 4,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "2",
+              "4",
+              "8",
+              "16"
+            ],
+            "question": "What is the cube root of 64?",
+            "correct_answer": "B"
+          },
+          {
+            "id": 5,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "5",
+              "6",
+              "7",
+              "8"
+            ],
+            "question": "If x + y = 10 and x - y = 2, what is the value of x?",
+            "correct_answer": "B"
+          },
+          {
+            "id": 6,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "3",
+              "6",
+              "9",
+              "12"
+            ],
+            "question": "What is the value of 3! (3 factorial)?",
+            "correct_answer": "B"
+          },
+          {
+            "id": 7,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Yes",
+              "No"
+            ],
+            "question": "If a number is divisible by both 2 and 3, is it also divisible by 6?",
+            "correct_answer": "A"
+          },
+          {
+            "id": 8,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Square",
+              "Triangle",
+              "Circle",
+              "Pentagon"
+            ],
+            "question": "Which figure completes the sequence? (Provide a pattern)",
+            "correct_answer": "C"
+          },
+          {
+            "id": 9,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Yes",
+              "No"
+            ],
+            "question": "If all Bloops are Razzies and all Razzies are Lazzies, are all Bloops definitely Lazzies?",
+            "correct_answer": "A"
+          },
+          {
+            "id": 10,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday"
+            ],
+            "question": "If today is Monday, what day will it be after 61 days?",
+            "correct_answer": "D"
+          }
+        ]
+      },
+      {
+        "id": "section_2",
+        "title": "Verbal Ability",
+        "questions": [
+          {
+            "id": 11,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Malevolent",
+              "Kind",
+              "Cruel",
+              "Hostile"
+            ],
+            "question": "Choose the correct synonym for 'Benevolent'.",
+            "correct_answer": "B"
+          },
+          {
+            "id": 12,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Accomodate",
+              "Accommodate",
+              "Acommodate",
+              "Acomodate"
+            ],
+            "question": "Which word is spelled correctly?",
+            "correct_answer": "B"
+          },
+          {
+            "id": 13,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Temporary",
+              "Permanent",
+              "Brief",
+              "Transient"
+            ],
+            "question": "Choose the correct antonym for 'Ephemeral'.",
+            "correct_answer": "B"
+          },
+          {
+            "id": 14,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "She don't like apples.",
+              "She doesn't likes apples.",
+              "She doesn't like apples.",
+              "She don't likes apples."
+            ],
+            "question": "Identify the grammatically correct sentence.",
+            "correct_answer": "C"
+          },
+          {
+            "id": 15,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Taller",
+              "More tall",
+              "Tall",
+              "Tallest"
+            ],
+            "question": "Choose the correct word to fill in the blank: 'She is ___ than her sister.'",
+            "correct_answer": "A"
+          }
+        ]
+      },
+      {
+        "id": "section_3",
+        "title": "Coding Challenge",
+        "questions": [
+          {
+            "id": 16,
+            "type": "coding",
+            "marks": 20,
+            "question": "Implement a function to reverse a string using JavaScript.",
+            "test_cases": [
+              {
+                "input": "hello",
+                "output": "olleh"
+              },
+              {
+                "input": "world",
+                "output": "dlrow"
+              }
+            ],
+            "constraints": "0 <= s.length <= 1000",
+            "input_format": "A string 's'",
+            "output_format": "Reversed string"
+          },
+          {
+            "id": 17,
+            "type": "coding",
+            "marks": 20,
+            "question": "Create a function to check if a given number is a palindrome using Python.",
+            "test_cases": [
+              {
+                "input": "121",
+                "output": "True"
+              },
+              {
+                "input": "123",
+                "output": "False"
+              }
+            ],
+            "constraints": "-2^31 <= n <= 2^31 - 1",
+            "input_format": "An integer 'n'",
+            "output_format": "'True' if palindrome, 'False' otherwise"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ff4b0f98-bc49-4fa1-8648-e57c2204ab5f",
+    "title": "Frontend technical assesment",
+    "description": "exam",
+    "role": "Frontend Developer",
+    "difficulty": "Hard",
+    "duration_minutes": 60,
+    "pass_mark": 40,
+    "created_by": "ceb8aa1a-e693-4611-b5d9-1023d1b7512c",
+    "created_at": "2026-01-07T04:52:03.24934+00:00",
+    "status": "AI_FAILED",
+    "error_message": "AI Generation Timed Out (90s). Please try again or check Ollama performance.",
+    "questions_data": null
+  },
+  {
+    "id": "0263d10a-6a55-48ca-8960-d52f57a8817f",
+    "title": "Frontend technical assesment exam",
+    "description": "create questions on html,css,eactjs,nodejs,mongodb",
+    "role": "Frontend Developer",
+    "difficulty": "Hard",
+    "duration_minutes": 60,
+    "pass_mark": 20,
+    "created_by": "ceb8aa1a-e693-4611-b5d9-1023d1b7512c",
+    "created_at": "2026-01-11T16:45:51.022333+00:00",
+    "status": "DRAFT",
+    "error_message": null,
+    "questions_data": [
+      {
+        "id": "section_1",
+        "title": "Aptitude & Logical",
+        "questions": [
+          {
+            "id": 1,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "5",
+              "6",
+              "7",
+              "8"
+            ],
+            "question": "If 3x + 5 = 20, what is the value of x?",
+            "correct_answer": "5"
+          },
+          {
+            "id": 2,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "120 km",
+              "150 km",
+              "180 km",
+              "200 km"
+            ],
+            "question": "If a car travels at a speed of 60 km/h for 3 hours, how far does it travel?",
+            "correct_answer": "180 km"
+          },
+          {
+            "id": 3,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "24",
+              "32",
+              "40",
+              "48"
+            ],
+            "question": "Find the next number in the sequence: 2, 4, 8, 16, ...",
+            "correct_answer": "32"
+          },
+          {
+            "id": 4,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "$10",
+              "$12",
+              "$15",
+              "$18"
+            ],
+            "question": "If a shirt costs $20 and is discounted by 25%, what is the final price?",
+            "correct_answer": "$15"
+          },
+          {
+            "id": 5,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "6x^4",
+              "8x^4",
+              "12x^4",
+              "24x^4"
+            ],
+            "question": "Simplify: (3x^2 * 4x^3) / 2x",
+            "correct_answer": "6x^4"
+          },
+          {
+            "id": 6,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "3",
+              "4",
+              "5",
+              "6"
+            ],
+            "question": "Solve for y: 2y + 3 = 11",
+            "correct_answer": "4"
+          },
+          {
+            "id": 7,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "12",
+              "13",
+              "14",
+              "15"
+            ],
+            "question": "What is the square root of 169?",
+            "correct_answer": "13"
+          },
+          {
+            "id": 8,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "True",
+              "False",
+              "Cannot determine",
+              "None of the above"
+            ],
+            "question": "If all Bloops are Razzies and all Razzies are Lazzies, are all Bloops definitely Lazzies?",
+            "correct_answer": "True"
+          },
+          {
+            "id": 9,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "50",
+              "45",
+              "60",
+              "55"
+            ],
+            "question": "Which number comes next in the series: 10, 20, 30, 40, ...",
+            "correct_answer": "50"
+          },
+          {
+            "id": 10,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Equilateral",
+              "Isosceles",
+              "Scalene",
+              "Right-angled"
+            ],
+            "question": "If a triangle has angles of 30°, 60°, and 90°, what type of triangle is it?",
+            "correct_answer": "Right-angled"
+          }
+        ]
+      },
+      {
+        "id": "section_2",
+        "title": "Verbal Ability",
+        "questions": [
+          {
+            "id": 11,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "The cat sat on the mat.",
+              "The cat sat on mat.",
+              "The cat sat on a mat.",
+              "The cat sat on mat the."
+            ],
+            "question": "Identify the correct sentence:",
+            "correct_answer": "The cat sat on the mat."
+          },
+          {
+            "id": 12,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Kind",
+              "Malevolent",
+              "Generous",
+              "Compassionate"
+            ],
+            "question": "Choose the correct antonym of 'benevolent':",
+            "correct_answer": "Malevolent"
+          },
+          {
+            "id": 13,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Accommodate",
+              "Acommodate",
+              "Accomodate",
+              "Acomodate"
+            ],
+            "question": "Select the correctly spelled word:",
+            "correct_answer": "Accommodate"
+          },
+          {
+            "id": 14,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Eternal",
+              "Fleeting",
+              "Permanent",
+              "Enduring"
+            ],
+            "question": "Which word is closest in meaning to 'ephemeral'?",
+            "correct_answer": "Fleeting"
+          },
+          {
+            "id": 15,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "She don't like apples.",
+              "She doesn't likes apples.",
+              "She doesn't like apples.",
+              "She don't likes apples."
+            ],
+            "question": "Identify the grammatically correct sentence:",
+            "correct_answer": "She doesn't like apples."
+          }
+        ]
+      },
+      {
+        "id": "section_3",
+        "title": "Coding Challenge",
+        "questions": [
+          {
+            "id": 16,
+            "type": "coding",
+            "marks": 20,
+            "question": "Implement a function to reverse a string.",
+            "test_cases": [
+              {
+                "input": "hello",
+                "output": "olleh"
+              },
+              {
+                "input": "world",
+                "output": "dlrow"
+              }
+            ],
+            "constraints": "1 <= s.length <= 1000",
+            "input_format": "Input: A string s.",
+            "output_format": "Output: The reversed string."
+          },
+          {
+            "id": 17,
+            "type": "coding",
+            "marks": 20,
+            "question": "Write a function to check if a string is a palindrome.",
+            "test_cases": [
+              {
+                "input": "racecar",
+                "output": "True"
+              },
+              {
+                "input": "hello",
+                "output": "False"
+              }
+            ],
+            "constraints": "1 <= s.length <= 1000",
+            "input_format": "Input: A string s.",
+            "output_format": "Output: True if the string is a palindrome, otherwise False."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "a11c0b43-395a-43ad-b4f5-1a2866fc80f9",
+    "title": "backendexam",
+    "description": "",
+    "role": "Backend Developer",
+    "difficulty": "Hard",
+    "duration_minutes": 60,
+    "pass_mark": 30,
+    "created_by": "ceb8aa1a-e693-4611-b5d9-1023d1b7512c",
+    "created_at": "2026-01-07T05:18:01.911632+00:00",
+    "status": "AI_FAILED",
+    "error_message": "AI Generation Timed Out (120s). Please try again or check Ollama performance.",
+    "questions_data": null
+  },
+  {
+    "id": "4552febb-6648-4507-b80e-178d1ab5c542",
+    "title": "Frontend technical assesment 1",
+    "description": "exam",
+    "role": "Frontend Developer",
+    "difficulty": "Hard",
+    "duration_minutes": 60,
+    "pass_mark": 20,
+    "created_by": "ceb8aa1a-e693-4611-b5d9-1023d1b7512c",
+    "created_at": "2026-01-11T16:55:27.608094+00:00",
+    "status": "DRAFT",
+    "error_message": null,
+    "questions_data": [
+      {
+        "id": "section_1",
+        "title": "Aptitude & Logical",
+        "questions": [
+          {
+            "id": 1,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "50",
+              "100",
+              "150",
+              "200"
+            ],
+            "question": "What is 25% of 200?",
+            "correct_answer": "50"
+          },
+          {
+            "id": 2,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "20",
+              "30",
+              "40",
+              "50"
+            ],
+            "question": "If the sum of two numbers is 50 and their difference is 10, what is the larger number?",
+            "correct_answer": "30"
+          },
+          {
+            "id": 3,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "40",
+              "42",
+              "44",
+              "46"
+            ],
+            "question": "What is the next number in the sequence: 2, 6, 12, 20, 30?",
+            "correct_answer": "42"
+          },
+          {
+            "id": 4,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "50 km/h",
+              "60 km/h",
+              "70 km/h",
+              "80 km/h"
+            ],
+            "question": "A train travels 300 km in 5 hours. What is its speed?",
+            "correct_answer": "60 km/h"
+          },
+          {
+            "id": 5,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "4",
+              "8",
+              "16",
+              "32"
+            ],
+            "question": "If the area of a square is 64 square units, what is the length of one side?",
+            "correct_answer": "8"
+          },
+          {
+            "id": 6,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "90",
+              "100",
+              "110",
+              "120"
+            ],
+            "question": "What is 150% of 60?",
+            "correct_answer": "90"
+          },
+          {
+            "id": 7,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "5",
+              "6",
+              "7",
+              "8"
+            ],
+            "question": "If 3x + 5 = 20, what is x?",
+            "correct_answer": "5"
+          },
+          {
+            "id": 8,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Yes",
+              "No",
+              "Maybe",
+              "Cannot determine"
+            ],
+            "question": "If all Bloops are Razzies and all Razzies are Lazzies, are all Bloops definitely Lazzies?",
+            "correct_answer": "Yes"
+          },
+          {
+            "id": 9,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "2",
+              "6",
+              "7",
+              "8"
+            ],
+            "question": "Which number is the odd one out: 2, 6, 7, 8, 10?",
+            "correct_answer": "7"
+          },
+          {
+            "id": 10,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "4157",
+              "4158",
+              "4159",
+              "4160"
+            ],
+            "question": "If CAT is coded as 3120, how is DOG coded?",
+            "correct_answer": "4157"
+          }
+        ]
+      },
+      {
+        "id": "section_2",
+        "title": "Verbal Ability",
+        "questions": [
+          {
+            "id": 11,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "She don’t like apples.",
+              "She doesn’t likes apples.",
+              "She doesn’t like apples.",
+              "She don’t likes apples."
+            ],
+            "question": "Which sentence is grammatically correct?",
+            "correct_answer": "She doesn’t like apples."
+          },
+          {
+            "id": 12,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Cruel",
+              "Kind",
+              "Selfish",
+              "Hostile"
+            ],
+            "question": "Choose the synonym of 'Benevolent'.",
+            "correct_answer": "Kind"
+          },
+          {
+            "id": 13,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Accommodate",
+              "Acommodate",
+              "Accomodate",
+              "Acomodate"
+            ],
+            "question": "Which is the correct spelling?",
+            "correct_answer": "Accommodate"
+          },
+          {
+            "id": 14,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "The cat sat on the mat.",
+              "She runs faster than I.",
+              "They gone to the market.",
+              "He has completed his homework."
+            ],
+            "question": "Identify the incorrect sentence.",
+            "correct_answer": "They gone to the market."
+          },
+          {
+            "id": 15,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Mice",
+              "Mouses",
+              "Mousees",
+              "Mousies"
+            ],
+            "question": "What is the plural of 'Mouse'?",
+            "correct_answer": "Mice"
+          }
+        ]
+      },
+      {
+        "id": "section_3",
+        "title": "Coding Challenge",
+        "questions": [
+          {
+            "id": 16,
+            "type": "coding",
+            "marks": 20,
+            "question": "Implement a function to reverse a string.",
+            "test_cases": [
+              {
+                "input": "hello",
+                "output": "olleh"
+              },
+              {
+                "input": "world",
+                "output": "dlrow"
+              }
+            ],
+            "constraints": "1 <= length of s <= 100",
+            "input_format": "A string s.",
+            "output_format": "The reversed string."
+          },
+          {
+            "id": 17,
+            "type": "coding",
+            "marks": 20,
+            "question": "Write a function to find the largest number in an array.",
+            "test_cases": [
+              {
+                "input": "[1, 2, 3, 4, 5]",
+                "output": "5"
+              },
+              {
+                "input": "[10, 20, 30, 40]",
+                "output": "40"
+              }
+            ],
+            "constraints": "1 <= length of n <= 100",
+            "input_format": "An array of integers n.",
+            "output_format": "The largest integer in the array."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dc35603e-4b57-4de2-a1e7-4fc326732302",
+    "title": "BackendExam",
+    "description": "",
+    "role": "Backend Developer",
+    "difficulty": "Medium",
+    "duration_minutes": 60,
+    "pass_mark": 30,
+    "created_by": "ceb8aa1a-e693-4611-b5d9-1023d1b7512c",
+    "created_at": "2026-01-07T05:30:21.595406+00:00",
+    "status": "AI_FAILED",
+    "error_message": "AI Generation Timed Out (120s). Please try again or check Ollama performance.",
+    "questions_data": null
+  },
+  {
+    "id": "dc86372f-9107-4b18-b35a-3b64b15bb152",
+    "title": "Frontend",
+    "description": "exam",
+    "role": "Frontend Developer",
+    "difficulty": "Hard",
+    "duration_minutes": 60,
+    "pass_mark": 40,
+    "created_by": "ceb8aa1a-e693-4611-b5d9-1023d1b7512c",
+    "created_at": "2026-01-07T05:49:36.541336+00:00",
+    "status": "AI_FAILED",
+    "error_message": "AI Generation Timed Out (120s). Please try again or check Ollama performance.",
+    "questions_data": null
+  },
+  {
+    "id": "1992acfe-6f6d-4c57-a624-2cfe19aa5e5f",
+    "title": "Frontend",
+    "description": "exam",
+    "role": "Frontend Developer",
+    "difficulty": "Medium",
+    "duration_minutes": 60,
+    "pass_mark": 40,
+    "created_by": "ceb8aa1a-e693-4611-b5d9-1023d1b7512c",
+    "created_at": "2026-01-07T05:54:20.892841+00:00",
+    "status": "AI_FAILED",
+    "error_message": "AI Generation Timed Out (120s). Please try again or check Ollama performance.",
+    "questions_data": null
+  },
+  {
+    "id": "fcd031c7-86eb-43f2-bf6e-9bc15ddd352d",
+    "title": "Frontend",
+    "description": "exam",
+    "role": "Frontend Developer",
+    "difficulty": "Easy",
+    "duration_minutes": 60,
+    "pass_mark": 30,
+    "created_by": "ceb8aa1a-e693-4611-b5d9-1023d1b7512c",
+    "created_at": "2026-01-07T06:12:53.731174+00:00",
+    "status": "READY",
+    "error_message": null,
+    "questions_data": null
+  },
+  {
+    "id": "f41c6213-af1b-4611-b0bf-c9bed07e9ef4",
+    "title": "Frontend",
+    "description": "exam",
+    "role": "Frontend Developer",
+    "difficulty": "Medium",
+    "duration_minutes": 60,
+    "pass_mark": 40,
+    "created_by": "ceb8aa1a-e693-4611-b5d9-1023d1b7512c",
+    "created_at": "2026-01-07T06:41:55.876014+00:00",
+    "status": "READY",
+    "error_message": null,
+    "questions_data": null
+  },
+  {
+    "id": "1ea3f8df-7f5c-47d6-ab68-602f9d69255a",
+    "title": "python devloperexam createa in python related questions",
+    "description": "",
+    "role": "DevOps Engineer",
+    "difficulty": "Hard",
+    "duration_minutes": 60,
+    "pass_mark": 30,
+    "created_by": "ceb8aa1a-e693-4611-b5d9-1023d1b7512c",
+    "created_at": "2026-01-08T11:32:08.535032+00:00",
+    "status": "GENERATING",
+    "error_message": null,
+    "questions_data": null
+  },
+  {
+    "id": "2b3911bd-fe14-4380-9917-9464754e13b7",
+    "title": "Frontend devloperFr",
+    "description": "create exam on html css javascript python",
+    "role": "Frontend Developer",
+    "difficulty": "Easy",
+    "duration_minutes": 60,
+    "pass_mark": 30,
+    "created_by": "ceb8aa1a-e693-4611-b5d9-1023d1b7512c",
+    "created_at": "2026-01-08T15:19:12.675102+00:00",
+    "status": "READY",
+    "error_message": null,
+    "questions_data": null
+  },
+  {
+    "id": "bd11c6cc-189f-4f8a-9273-eb9903683556",
+    "title": "Frontend devloper",
+    "description": "createa a apptitude reaasononig,verbal, and coding questions",
+    "role": "Frontend Developer",
+    "difficulty": "Hard",
+    "duration_minutes": 60,
+    "pass_mark": 20,
+    "created_by": "ceb8aa1a-e693-4611-b5d9-1023d1b7512c",
+    "created_at": "2026-01-09T09:36:34.208378+00:00",
+    "status": "READY",
+    "error_message": null,
+    "questions_data": [
+      {
+        "id": "section_1",
+        "title": "Aptitude & Logical",
+        "questions": [
+          {
+            "id": 1,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "50",
+              "60",
+              "70",
+              "80"
+            ],
+            "question": "What is 25% of 240?",
+            "correct_answer": "B"
+          },
+          {
+            "id": 2,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "3",
+              "5",
+              "7",
+              "9"
+            ],
+            "question": "If x + y = 10 and x - y = 4, what is the value of x?",
+            "correct_answer": "C"
+          },
+          {
+            "id": 3,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "30",
+              "32",
+              "34",
+              "36"
+            ],
+            "question": "What is the next number in the series: 2, 6, 12, 20, ?",
+            "correct_answer": "A"
+          },
+          {
+            "id": 4,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "10",
+              "12",
+              "14",
+              "16"
+            ],
+            "question": "What is the square root of 144?",
+            "correct_answer": "B"
+          },
+          {
+            "id": 5,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "120 km",
+              "150 km",
+              "180 km",
+              "200 km"
+            ],
+            "question": "If a car travels at 60 km/h, how far will it travel in 3 hours?",
+            "correct_answer": "C"
+          },
+          {
+            "id": 6,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "20",
+              "25",
+              "30",
+              "35"
+            ],
+            "question": "What is 15% of 200?",
+            "correct_answer": "C"
+          },
+          {
+            "id": 7,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "7",
+              "8",
+              "9",
+              "10"
+            ],
+            "question": "If 3x = 27, what is the value of x?",
+            "correct_answer": "C"
+          },
+          {
+            "id": 8,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "90°",
+              "120°",
+              "180°",
+              "270°"
+            ],
+            "question": "What is the sum of the angles in a triangle?",
+            "correct_answer": "C"
+          },
+          {
+            "id": 9,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "2.14",
+              "3.14",
+              "3.16",
+              "3.18"
+            ],
+            "question": "What is the value of π (pi) approximately?",
+            "correct_answer": "B"
+          },
+          {
+            "id": 10,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "30",
+              "35",
+              "40",
+              "45"
+            ],
+            "question": "What is the area of a rectangle with length 8 and width 5?",
+            "correct_answer": "C"
+          },
+          {
+            "id": 11,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Yes",
+              "No",
+              "Maybe",
+              "Cannot determine"
+            ],
+            "question": "All roses are flowers. Some flowers fade quickly. Therefore, some roses fade quickly. Is this statement logically valid?",
+            "correct_answer": "B"
+          },
+          {
+            "id": 12,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Yes",
+              "No",
+              "Maybe",
+              "Cannot determine"
+            ],
+            "question": "If all cats are mammals and all mammals are animals, then all cats are animals. Is this statement logically valid?",
+            "correct_answer": "A"
+          }
+        ]
+      },
+      {
+        "id": "section_2",
+        "title": "Verbal Ability",
+        "questions": [
+          {
+            "id": 13,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "She don't like apples.",
+              "She doesn't likes apples.",
+              "She doesn't like apples.",
+              "She don't likes apples."
+            ],
+            "question": "Choose the correct sentence:",
+            "correct_answer": "C"
+          },
+          {
+            "id": 14,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Cruel",
+              "Kind",
+              "Mean",
+              "Selfish"
+            ],
+            "question": "Select the synonym of 'Benevolent':",
+            "correct_answer": "B"
+          },
+          {
+            "id": 15,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Accomodate",
+              "Accommodate",
+              "Acommodate",
+              "Acomodate"
+            ],
+            "question": "Identify the correctly spelled word:",
+            "correct_answer": "B"
+          },
+          {
+            "id": 16,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "to",
+              "with",
+              "of",
+              "on"
+            ],
+            "question": "Choose the correct preposition: 'He is allergic ___ cats.'",
+            "correct_answer": "A"
+          },
+          {
+            "id": 17,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Stingy",
+              "Kind",
+              "Charitable",
+              "Liberal"
+            ],
+            "question": "Select the antonym of 'Generous':",
+            "correct_answer": "A"
+          }
+        ]
+      },
+      {
+        "id": "section_3",
+        "title": "Coding Challenge",
+        "questions": [
+          {
+            "id": 18,
+            "type": "coding",
+            "marks": 20,
+            "question": "Write a function to reverse a string.",
+            "test_cases": [
+              {
+                "input": "hello",
+                "output": "olleh"
+              },
+              {
+                "input": "world",
+                "output": "dlrow"
+              }
+            ],
+            "constraints": "1 <= length of string <= 1000",
+            "input_format": "A single string.",
+            "output_format": "The reversed string."
+          },
+          {
+            "id": 19,
+            "type": "coding",
+            "marks": 20,
+            "question": "Write a function to check if a string is a palindrome.",
+            "test_cases": [
+              {
+                "input": "racecar",
+                "output": "True"
+              },
+              {
+                "input": "hello",
+                "output": "False"
+              }
+            ],
+            "constraints": "1 <= length of string <= 1000",
+            "input_format": "A single string.",
+            "output_format": "True if the string is a palindrome, False otherwise."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "87abd88e-b1f6-4476-a1e3-9167726ef7db",
+    "title": "Frontend devloper",
+    "description": "creayte exams",
+    "role": "Frontend Developer",
+    "difficulty": "Hard",
+    "duration_minutes": 60,
+    "pass_mark": 20,
+    "created_by": "ceb8aa1a-e693-4611-b5d9-1023d1b7512c",
+    "created_at": "2026-01-09T10:01:34.569073+00:00",
+    "status": "READY",
+    "error_message": null,
+    "questions_data": [
+      {
+        "id": "section_1",
+        "title": "Aptitude & Logical",
+        "questions": [
+          {
+            "id": 1,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "24",
+              "32",
+              "64",
+              "128"
+            ],
+            "question": "What is the next number in the series: 2, 4, 8, 16, __?",
+            "correct_answer": "32"
+          },
+          {
+            "id": 2,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "7",
+              "21",
+              "6",
+              "3"
+            ],
+            "question": "If 3x - 7 = 14, what is the value of x?",
+            "correct_answer": "7"
+          },
+          {
+            "id": 3,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "11cm",
+              "22cm",
+              "24cm",
+              "16cm"
+            ],
+            "question": "A rectangle has a length of 8cm and a width of 3cm. What is its perimeter?",
+            "correct_answer": "22cm"
+          },
+          {
+            "id": 4,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "25",
+              "50",
+              "75",
+              "100"
+            ],
+            "question": "What is 25% of 200?",
+            "correct_answer": "50"
+          },
+          {
+            "id": 5,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "50 km/h",
+              "60 km/h",
+              "70 km/h",
+              "80 km/h"
+            ],
+            "question": "If a train travels 300 km in 5 hours, what is its average speed?",
+            "correct_answer": "60 km/h"
+          },
+          {
+            "id": 6,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "12",
+              "14",
+              "16",
+              "18"
+            ],
+            "question": "What is the square root of 144?",
+            "correct_answer": "12"
+          },
+          {
+            "id": 7,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "$16",
+              "$18",
+              "$14",
+              "$12"
+            ],
+            "question": "If a shirt costs $20 and is on sale for 20% off, what is the sale price?",
+            "correct_answer": "$16"
+          },
+          {
+            "id": 8,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "45",
+              "55",
+              "65",
+              "75"
+            ],
+            "question": "What is the sum of the first 10 natural numbers?",
+            "correct_answer": "55"
+          },
+          {
+            "id": 9,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "24",
+              "25",
+              "26",
+              "27"
+            ],
+            "question": "If A is 1, B is 2, ..., Z is 26, what is the sum of the letters in 'CAT'?",
+            "correct_answer": "24"
+          },
+          {
+            "id": 10,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "3.14",
+              "3.15",
+              "3.16",
+              "3.17"
+            ],
+            "question": "What is the value of π (pi) rounded to two decimal places?",
+            "correct_answer": "3.14"
+          },
+          {
+            "id": 11,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Yes",
+              "No"
+            ],
+            "question": "If all Bloops are Razzies and all Razzies are Lazzies, are all Bloops definitely Lazzies?",
+            "correct_answer": "Yes"
+          },
+          {
+            "id": 12,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Hexagon",
+              "Circle",
+              "Octagon",
+              "Rectangle"
+            ],
+            "question": "Which figure completes the series? [Triangle, Square, Pentagon, __]",
+            "correct_answer": "Hexagon"
+          }
+        ]
+      },
+      {
+        "id": "section_2",
+        "title": "Verbal Ability",
+        "questions": [
+          {
+            "id": 13,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Malevolent",
+              "Kind",
+              "Cruel",
+              "Indifferent"
+            ],
+            "question": "Which word is most similar in meaning to 'Benevolent'?",
+            "correct_answer": "Kind"
+          },
+          {
+            "id": 14,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "She don't like apples.",
+              "She doesn't likes apples.",
+              "She doesn't like apples.",
+              "She don't likes apples."
+            ],
+            "question": "Choose the sentence with correct grammar.",
+            "correct_answer": "She doesn't like apples."
+          },
+          {
+            "id": 15,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Ancient",
+              "Modern",
+              "Outdated",
+              "Classic"
+            ],
+            "question": "What is the antonym of 'Obsolete'?",
+            "correct_answer": "Modern"
+          },
+          {
+            "id": 16,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Cacti",
+              "Cactuses",
+              "Cactuss",
+              "Cactum"
+            ],
+            "question": "Identify the correct plural form of 'Cactus'.",
+            "correct_answer": "Cacti"
+          },
+          {
+            "id": 17,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Happy",
+              "Joyful",
+              "Elated",
+              "Melancholy"
+            ],
+            "question": "Which word does not belong?",
+            "correct_answer": "Melancholy"
+          }
+        ]
+      },
+      {
+        "id": "section_3",
+        "title": "Coding Challenge",
+        "questions": [
+          {
+            "id": 18,
+            "type": "coding",
+            "marks": 20,
+            "question": "Implement a function to reverse a string.",
+            "test_cases": [
+              {
+                "input": "hello",
+                "output": "olleh"
+              },
+              {
+                "input": "world",
+                "output": "dlrow"
+              }
+            ],
+            "constraints": "0 <= length of s <= 1000",
+            "input_format": "A string s.",
+            "output_format": "The reversed string."
+          },
+          {
+            "id": 19,
+            "type": "coding",
+            "marks": 20,
+            "question": "Write a function to check if a given string is a palindrome.",
+            "test_cases": [
+              {
+                "input": "madam",
+                "output": "true"
+              },
+              {
+                "input": "hello",
+                "output": "false"
+              }
+            ],
+            "constraints": "0 <= length of s <= 1000",
+            "input_format": "A string s.",
+            "output_format": "Return 'true' if the string is a palindrome, else 'false'."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dce4bc09-8d9f-4259-977b-ec97fc02c499",
+    "title": "Frontend devloper",
+    "description": "give all questions in understanding way",
+    "role": "Frontend Developer",
+    "difficulty": "Hard",
+    "duration_minutes": 60,
+    "pass_mark": 20,
+    "created_by": "ceb8aa1a-e693-4611-b5d9-1023d1b7512c",
+    "created_at": "2026-01-09T10:50:00.610602+00:00",
+    "status": "READY",
+    "error_message": null,
+    "questions_data": [
+      {
+        "id": "section_1",
+        "title": "Aptitude & Logical",
+        "questions": [
+          {
+            "id": 1,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "80",
+              "100",
+              "120",
+              "150"
+            ],
+            "question": "What is 25% of 400?",
+            "correct_answer": "100"
+          },
+          {
+            "id": 2,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "22 and 24",
+              "24 and 26",
+              "20 and 22",
+              "18 and 20"
+            ],
+            "question": "The sum of two consecutive even numbers is 46. What are the numbers?",
+            "correct_answer": "22 and 24"
+          },
+          {
+            "id": 3,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "2",
+              "3",
+              "4",
+              "5"
+            ],
+            "question": "If 4^x = 64, what is the value of x?",
+            "correct_answer": "3"
+          },
+          {
+            "id": 4,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "40",
+              "42",
+              "44",
+              "46"
+            ],
+            "question": "What is the next number in the sequence: 2, 6, 12, 20, 30, ...?",
+            "correct_answer": "42"
+          },
+          {
+            "id": 5,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "60",
+              "70",
+              "80",
+              "90"
+            ],
+            "question": "A car travels 60 km in 45 minutes. What is its speed in km/h?",
+            "correct_answer": "80"
+          },
+          {
+            "id": 6,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "100 cm²",
+              "120 cm²",
+              "144 cm²",
+              "160 cm²"
+            ],
+            "question": "If the perimeter of a square is 40 cm, what is its area?",
+            "correct_answer": "100 cm²"
+          },
+          {
+            "id": 7,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "10 cm",
+              "11.66 cm",
+              "12 cm",
+              "13 cm"
+            ],
+            "question": "A rectangle has a length of 10 cm and a width of 6 cm. What is its diagonal length?",
+            "correct_answer": "11.66 cm"
+          },
+          {
+            "id": 8,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "5",
+              "7",
+              "10",
+              "12"
+            ],
+            "question": "If x + y = 15 and x - y = 5, what is the value of x?",
+            "correct_answer": "10"
+          },
+          {
+            "id": 9,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "10",
+              "11",
+              "12",
+              "13"
+            ],
+            "question": "What is the square root of 144?",
+            "correct_answer": "12"
+          },
+          {
+            "id": 10,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "7",
+              "8",
+              "9",
+              "10"
+            ],
+            "question": "If 3a = 27, what is the value of a?",
+            "correct_answer": "9"
+          },
+          {
+            "id": 11,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "All roses fade quickly",
+              "Some roses fade quickly",
+              "No roses fade quickly",
+              "Some flowers that fade quickly are roses"
+            ],
+            "question": "If all roses are flowers and some flowers fade quickly, which of the following statements is true?",
+            "correct_answer": "Some flowers that fade quickly are roses"
+          },
+          {
+            "id": 12,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday"
+            ],
+            "question": "If today is Monday, what day will it be after 61 days?",
+            "correct_answer": "Friday"
+          }
+        ]
+      },
+      {
+        "id": "section_2",
+        "title": "Verbal Ability",
+        "questions": [
+          {
+            "id": 13,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "She don't like apples.",
+              "She doesn't likes apples.",
+              "She doesn't like apples.",
+              "She don't likes apples."
+            ],
+            "question": "Choose the correct sentence:",
+            "correct_answer": "She doesn't like apples."
+          },
+          {
+            "id": 14,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Cruel",
+              "Kind",
+              "Mean",
+              "Selfish"
+            ],
+            "question": "Identify the synonym for 'Benevolent':",
+            "correct_answer": "Kind"
+          },
+          {
+            "id": 15,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Each of the students are responsible.",
+              "Each of the students is responsible.",
+              "Each of the students were responsible.",
+              "Each of the students have been responsible."
+            ],
+            "question": "Which sentence is grammatically correct?",
+            "correct_answer": "Each of the students is responsible."
+          },
+          {
+            "id": 16,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Religious",
+              "Devout",
+              "Irreligious",
+              "Faithful"
+            ],
+            "question": "Choose the correct antonym for 'Pious':",
+            "correct_answer": "Irreligious"
+          },
+          {
+            "id": 17,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Accomodate",
+              "Acommodate",
+              "Accommodate",
+              "Acomodate"
+            ],
+            "question": "Which word is spelled correctly?",
+            "correct_answer": "Accommodate"
+          }
+        ]
+      },
+      {
+        "id": "section_3",
+        "title": "Coding Challenge",
+        "questions": [
+          {
+            "id": 18,
+            "type": "coding",
+            "marks": 20,
+            "question": "Given an array of integers, return the indices of the two numbers that add up to a specific target. You may assume that each input would have exactly one solution, and you may not use the same element twice.",
+            "test_cases": [
+              {
+                "input": "4\n2 7 11 15\n9",
+                "output": "0 1"
+              },
+              {
+                "input": "3\n3 2 4\n6",
+                "output": "1 2"
+              }
+            ],
+            "constraints": "2 <= N <= 10^4, -10^9 <= nums[i] <= 10^9, -10^9 <= target <= 10^9",
+            "input_format": "The first line contains an integer N, representing the size of the array. The second line contains N space-separated integers representing the array. The third line contains an integer target.",
+            "output_format": "Output the indices of the two numbers that add up to the target."
+          },
+          {
+            "id": 19,
+            "type": "coding",
+            "marks": 20,
+            "question": "Implement a function to check if a string is a palindrome. A palindrome is a string that reads the same backward as forward.",
+            "test_cases": [
+              {
+                "input": "racecar",
+                "output": "True"
+              },
+              {
+                "input": "hello",
+                "output": "False"
+              }
+            ],
+            "constraints": "1 <= length of string <= 10^5",
+            "input_format": "A string consisting of alphanumeric characters.",
+            "output_format": "Output 'True' if the string is a palindrome, otherwise output 'False'."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "635abad8-19cf-4029-855e-ef1e49a41571",
+    "title": "Frontend",
+    "description": "create questions on html,css,javscript,reactjs,nodejs,RestApis",
+    "role": "Frontend Developer",
+    "difficulty": "Hard",
+    "duration_minutes": 60,
+    "pass_mark": 15,
+    "created_by": "ceb8aa1a-e693-4611-b5d9-1023d1b7512c",
+    "created_at": "2026-01-11T16:08:00.908849+00:00",
+    "status": "DRAFT",
+    "error_message": null,
+    "questions_data": [
+      {
+        "id": "section_1",
+        "title": "Aptitude & Logical",
+        "questions": [
+          {
+            "id": 1,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "4",
+              "5",
+              "6",
+              "7"
+            ],
+            "question": "If 2x + 3 = 15, what is the value of x?",
+            "correct_answer": "6"
+          },
+          {
+            "id": 2,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "24",
+              "28",
+              "32",
+              "64"
+            ],
+            "question": "What is the next number in the sequence: 2, 4, 8, 16, ?",
+            "correct_answer": "32"
+          },
+          {
+            "id": 3,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "50 km/h",
+              "60 km/h",
+              "70 km/h",
+              "80 km/h"
+            ],
+            "question": "If a train travels 300 km in 5 hours, what is its average speed?",
+            "correct_answer": "60 km/h"
+          },
+          {
+            "id": 4,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "25",
+              "50",
+              "75",
+              "100"
+            ],
+            "question": "What is 25% of 200?",
+            "correct_answer": "50"
+          },
+          {
+            "id": 5,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "153.86 cm²",
+              "154 cm²",
+              "155 cm²",
+              "156 cm²"
+            ],
+            "question": "If the radius of a circle is 7 cm, what is its area? (Use π = 3.14)",
+            "correct_answer": "153.86 cm²"
+          },
+          {
+            "id": 6,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "10",
+              "11",
+              "12",
+              "13"
+            ],
+            "question": "What is the square root of 144?",
+            "correct_answer": "12"
+          },
+          {
+            "id": 7,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "$15",
+              "$16",
+              "$17",
+              "$18"
+            ],
+            "question": "If a shirt costs $20 and is discounted by 15%, what is the final price?",
+            "correct_answer": "$17"
+          },
+          {
+            "id": 8,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Yes",
+              "No",
+              "Maybe",
+              "Cannot be determined"
+            ],
+            "question": "All roses are flowers. Some flowers fade quickly. Therefore, some roses fade quickly. Is this conclusion valid?",
+            "correct_answer": "Cannot be determined"
+          },
+          {
+            "id": 9,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Peter",
+              "John",
+              "Mary",
+              "Cannot be determined"
+            ],
+            "question": "If Peter is taller than John, and John is taller than Mary, who is the shortest?",
+            "correct_answer": "Mary"
+          },
+          {
+            "id": 10,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "H",
+              "I",
+              "J",
+              "K"
+            ],
+            "question": "What comes next in the sequence: A, C, E, G, ?",
+            "correct_answer": "I"
+          }
+        ]
+      },
+      {
+        "id": "section_2",
+        "title": "Verbal Ability",
+        "questions": [
+          {
+            "id": 11,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Accomodate",
+              "Accommodate",
+              "Acommodate",
+              "Acomodate"
+            ],
+            "question": "Choose the correctly spelled word:",
+            "correct_answer": "Accommodate"
+          },
+          {
+            "id": 12,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "The team are winning.",
+              "The team is winning.",
+              "The team were winning.",
+              "The team has winning."
+            ],
+            "question": "Select the correct sentence:",
+            "correct_answer": "The team is winning."
+          },
+          {
+            "id": 13,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Malevolent",
+              "Kind",
+              "Hostile",
+              "Cruel"
+            ],
+            "question": "Which word is a synonym for 'benevolent'?",
+            "correct_answer": "Kind"
+          },
+          {
+            "id": 14,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "Success",
+              "Triumph",
+              "Defeat",
+              "Achievement"
+            ],
+            "question": "Identify the antonym of 'victory':",
+            "correct_answer": "Defeat"
+          },
+          {
+            "id": 15,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              ".",
+              ",",
+              "?",
+              "!"
+            ],
+            "question": "Choose the correct punctuation for the sentence: 'What time is it __'",
+            "correct_answer": "?"
+          }
+        ]
+      },
+      {
+        "id": "section_3",
+        "title": "Coding Challenge",
+        "questions": [
+          {
+            "id": 16,
+            "type": "coding",
+            "marks": 20,
+            "question": "Given an array of integers, return indices of the two numbers such that they add up to a specific target.",
+            "test_cases": [
+              {
+                "input": "[2, 7, 11, 15] 9",
+                "output": "[0, 1]"
+              },
+              {
+                "input": "[3, 2, 4] 6",
+                "output": "[1, 2]"
+              }
+            ],
+            "constraints": "You may assume that each input would have exactly one solution, and you may not use the same element twice.",
+            "input_format": "An array of integers and a target integer.",
+            "output_format": "Indices of the two numbers."
+          },
+          {
+            "id": 17,
+            "type": "coding",
+            "marks": 20,
+            "question": "Implement a function to reverse a string.",
+            "test_cases": [
+              {
+                "input": "\"hello\"",
+                "output": "\"olleh\""
+              },
+              {
+                "input": "\"world\"",
+                "output": "\"dlrow\""
+              }
+            ],
+            "constraints": "Do not use built-in reverse functions.",
+            "input_format": "A string.",
+            "output_format": "The reversed string."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "2f0d5002-c191-43c9-8d1c-877b4a70febd",
+    "title": "Frontend Technical assesment",
+    "description": "create mcqs on html,css,javascript,reactjs,nodejs,mongodb",
+    "role": "Frontend Developer",
+    "difficulty": "Hard",
+    "duration_minutes": 60,
+    "pass_mark": 20,
+    "created_by": "ceb8aa1a-e693-4611-b5d9-1023d1b7512c",
+    "created_at": "2026-01-12T07:07:55.244247+00:00",
+    "status": "DRAFT",
+    "error_message": null,
+    "questions_data": [
+      {
+        "id": "section_1",
+        "title": "Aptitude & Logical",
+        "questions": [
+          {
+            "id": 1,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "5",
+              "10",
+              "15",
+              "20"
+            ],
+            "question": "If x + y = 15 and x - y = 5, what is the value of x?",
+            "correct_answer": "10"
+          },
+          {
+            "id": 2,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "11",
+              "12",
+              "13",
+              "14"
+            ],
+            "question": "What is the square root of 169?",
+            "correct_answer": "13"
+          },
+          {
+            "id": 3,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "3",
+              "4",
+              "5",
+              "6"
+            ],
+            "question": "If 3x + 4 = 19, what is the value of x?",
+            "correct_answer": "5"
+          },
+          {
+            "id": 4,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "24",
+              "28",
+              "32",
+              "36"
+            ],
+            "question": "What is the next number in the sequence: 2, 4, 8, 16, __?",
+            "correct_answer": "32"
+          },
+          {
+            "id": 5,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "45",
+              "50",
+              "55",
+              "60"
+            ],
+            "question": "What is the sum of the first 10 natural numbers?",
+            "correct_answer": "55"
+          },
+          {
+            "id": 6,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "5",
+              "6",
+              "7",
+              "8"
+            ],
+            "question": "If the area of a rectangle is 50 sq. units and its length is 10 units, what is its width?",
+            "correct_answer": "5"
+          },
+          {
+            "id": 7,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "20",
+              "25",
+              "30",
+              "35"
+            ],
+            "question": "What is 20% of 150?",
+            "correct_answer": "30"
+          },
+          {
+            "id": 8,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "All Bloops are Lazzies",
+              "All Lazzies are Bloops",
+              "Some Razzies are not Bloops",
+              "All Razzies are Bloops"
+            ],
+            "question": "If all Bloops are Razzies and all Razzies are Lazzies, which of the following must be true?",
+            "correct_answer": "All Bloops are Lazzies"
+          },
+          {
+            "id": 9,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "3",
+              "5",
+              "7",
+              "9"
+            ],
+            "question": "Which number is the odd one out: 3, 5, 7, 9?",
+            "correct_answer": "9"
+          },
+          {
+            "id": 10,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "E",
+              "F",
+              "G",
+              "H"
+            ],
+            "question": "What comes next in the sequence: O, T, T, F, F, S, S, __?",
+            "correct_answer": "E"
+          }
+        ]
+      },
+      {
+        "id": "section_2",
+        "title": "Verbal Ability",
+        "questions": [
+          {
+            "id": 11,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "She don't like apples.",
+              "She doesn't likes apples.",
+              "She doesn't like apples.",
+              "She don't likes apples."
+            ],
+            "question": "Choose the correct sentence:",
+            "correct_answer": "She doesn't like apples."
+          },
+          {
+            "id": 12,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "The dog barks loudly.",
+              "The cats is sleeping.",
+              "The birds are singing.",
+              "The sun shines brightly."
+            ],
+            "question": "Identify the grammatically incorrect sentence:",
+            "correct_answer": "The cats is sleeping."
+          },
+          {
+            "id": 13,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "plot",
+              "plott",
+              "plotte",
+              "plottte"
+            ],
+            "question": "Choose the correct word: The __ of the story is intriguing.",
+            "correct_answer": "plot"
+          },
+          {
+            "id": 14,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "slow",
+              "quick",
+              "lazy",
+              "tired"
+            ],
+            "question": "Which word is a synonym for 'fast'?",
+            "correct_answer": "quick"
+          },
+          {
+            "id": 15,
+            "type": "mcq",
+            "marks": 2,
+            "options": [
+              "methodical",
+              "methodic",
+              "methodically",
+              "methodicaly"
+            ],
+            "question": "Choose the correct word: He is very __ in his approach.",
+            "correct_answer": "methodical"
+          }
+        ]
+      },
+      {
+        "id": "section_3",
+        "title": "Coding Challenge",
+        "questions": [
+          {
+            "id": 16,
+            "type": "coding",
+            "marks": 20,
+            "question": "Write a function to reverse a string.",
+            "test_cases": [
+              {
+                "input": "hello",
+                "output": "olleh"
+              },
+              {
+                "input": "world",
+                "output": "dlrow"
+              }
+            ],
+            "constraints": "1 <= length of string <= 1000",
+            "input_format": "A string consisting of alphabets.",
+            "output_format": "Reversed string."
+          },
+          {
+            "id": 17,
+            "type": "coding",
+            "marks": 20,
+            "question": "Write a function to check if a string is a palindrome.",
+            "test_cases": [
+              {
+                "input": "madam",
+                "output": "true"
+              },
+              {
+                "input": "hello",
+                "output": "false"
+              }
+            ],
+            "constraints": "1 <= length of string <= 1000",
+            "input_format": "A string consisting of alphabets.",
+            "output_format": "Boolean indicating if the string is a palindrome."
+          }
+        ]
+      }
+    ]
+  }
+]

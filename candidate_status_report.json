@@ -1,0 +1,28 @@
+{
+  "total_apps_in_db": 13,
+  "exam_passed_apps": 2,
+  "candidates": [
+    {
+      "id": "84079410-6b68-4ca2-937a-3c8eb0d97ae5",
+      "user_id": "adfd6c1f-0050-4afd-884a-04ed63ab5263",
+      "name": "SAI",
+      "status": "EXAM_PASSED",
+      "profile_found": true,
+      "email_verified": false,
+      "phone_verified": false,
+      "verified_by_admin": false,
+      "is_visible": false
+    },
+    {
+      "id": "c0596eeb-2107-4298-8971-635d0921f96d",
+      "user_id": "adfd6c1f-0050-4afd-884a-04ed63ab5263",
+      "name": "sai",
+      "status": "EXAM_PASSED",
+      "profile_found": true,
+      "email_verified": false,
+      "phone_verified": false,
+      "verified_by_admin": false,
+      "is_visible": false
+    }
+  ]
+}

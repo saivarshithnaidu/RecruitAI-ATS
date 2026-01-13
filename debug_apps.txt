@@ -1,0 +1,11 @@
+Total: 10
+ID: dd493dde-0d7d-4111-8cf6-68fe68a44547 | Email: pardhasaradhipujala@gmail.com | Status: EXAM_ASSIGNED | CreatedAt: 2026-01-05T16:30:46.104273
+ID: 74d52838-c484-4b95-830d-54001c7d6c6d | Email: komaleshwarakumarkonatham@gmail.com | Status: EXAM_ASSIGNED | CreatedAt: 2026-01-05T17:13:10.132102
+ID: e7a2a6c6-705c-461f-8b35-b9e8ad984a0b | Email: saivarshith8284@gmail.com | Status: EXAM_FAILED | CreatedAt: 2026-01-05T15:13:37.718138
+ID: 1cbc1f95-b93b-4ba4-a1c0-ec36ea09fd6c | Email: 238x5a4209@khitguntur.ac.in | Status: EXAM_FAILED | CreatedAt: 2026-01-08T14:41:24.669321
+ID: cc5b35db-84a7-4493-9eef-a362e212bed5 | Email: chandu@gmail.com | Status: EXAM_FAILED | CreatedAt: 2026-01-05T06:24:13.081964
+ID: c0596eeb-2107-4298-8971-635d0921f96d | Email: startupscalex@gmail.com | Status: APPLIED | CreatedAt: 2026-01-05T17:05:46.340344
+ID: d9997f3f-d754-4990-b3e0-396b25adfece | Email: ajay4yamarthi@gmail.com | Status: EXAM_ASSIGNED | CreatedAt: 2026-01-05T16:07:16.771206
+ID: 8904e367-9e12-4dd6-a811-912b4d9fb652 | Email: 238x5a4214@khitguntur.ac.in | Status: APPLIED | CreatedAt: 2026-01-08T16:02:21.181523
+ID: 5951be72-66bb-474d-aa83-0c0cf6012c6f | Email: 238x5a4213@khitguntur.ac.in | Status: EXAM_FAILED | CreatedAt: 2026-01-08T11:24:25.578753
+ID: db293e30-ad29-48a7-85bd-62d6fb91a42e | Email: bolikondaramu456@gmail.com | Status: EXAM_FAILED | CreatedAt: 2026-01-05T17:00:55.969259

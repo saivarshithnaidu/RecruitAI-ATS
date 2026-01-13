@@ -1,0 +1,11 @@
+User ID: 47ea13c8-b17b-47e0-9b02-f31decaa128e
+
+ALL APPLICATIONS (Ordered by Newest First):
+[0] ID: 5bc53f6c-700c-4cef-8415-0b544757f2d7 | Status: EXAM_PASSED | Created: 2026-01-13T06:43:04.329742
+[1] ID: 35cb9a53-7281-4993-82fd-282cb0dbafdd | Status: HIRED | Created: 2026-01-09T09:44:17.691806
+
+INTERVIEWS:
+ID: bc92407c-1eee-4840-93fa-896339df776a | Status: completed | Linked App ID: 35cb9a53-7281-4993-82fd-282cb0dbafdd
+ID: d123f098-21af-45b7-b438-b09e210405f5 | Status: completed | Linked App ID: 35cb9a53-7281-4993-82fd-282cb0dbafdd
+ID: 4fb14621-9430-4a3d-9ec0-dd0b7123b162 | Status: completed | Linked App ID: 35cb9a53-7281-4993-82fd-282cb0dbafdd
+ID: 93b0c50a-342d-426e-b77b-a30eb227ba8a | Status: completed | Linked App ID: 35cb9a53-7281-4993-82fd-282cb0dbafdd

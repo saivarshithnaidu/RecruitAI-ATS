@@ -1,0 +1,9 @@
+{
+  "stack": "Error: read ECONNRESET\n    at TLSWrap.onStreamRead (node:internal/stream_base_commons:216:20)\n    at cachedError (file:///C:/RecruitAI/ai-ats/node_modules/postgres/src/query.js:170:23)\n    at new Query (file:///C:/RecruitAI/ai-ats/node_modules/postgres/src/query.js:36:24)\n    at sql (file:///C:/RecruitAI/ai-ats/node_modules/postgres/src/index.js:112:11)\n    at main (C:\\RecruitAI\\ai-ats\\scripts\\fix-schema.ts:21:15)",
+  "message": "read ECONNRESET",
+  "errno": -4077,
+  "code": "ECONNRESET",
+  "syscall": "read",
+  "args": [],
+  "types": null
+}

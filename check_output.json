@@ -1,0 +1,10 @@
+{
+  "count": null,
+  "data": [],
+  "error": {
+    "message": "TypeError: fetch failed",
+    "details": "TypeError: fetch failed\n\nCaused by: ConnectTimeoutError: Connect Timeout Error (attempted addresses: 64:ff9b::6812:260a:443, 172.64.149.246:443, 64:ff9b::ac40:95f6:443, 104.18.38.10:443, timeout: 10000ms) (UND_ERR_CONNECT_TIMEOUT)\nConnectTimeoutError: Connect Timeout Error (attempted addresses: 64:ff9b::6812:260a:443, 172.64.149.246:443, 64:ff9b::ac40:95f6:443, 104.18.38.10:443, timeout: 10000ms)\n    at onConnectTimeout (node:internal/deps/undici/undici:2602:28)\n    at Immediate._onImmediate (node:internal/deps/undici/undici:2568:35)\n    at process.processImmediate (node:internal/timers:485:21)",
+    "hint": "",
+    "code": ""
+  }
+}
