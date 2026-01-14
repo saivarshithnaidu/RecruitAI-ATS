@@ -67,5 +67,5 @@ export async function GET(request: NextRequest) {
     }
 
     // 5. Redirect to Signup
-    return redirect(`/signup?source=invite`);
+    return redirect(`/auth/signup?source=invite`);
 }

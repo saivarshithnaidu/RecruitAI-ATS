@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sendEmail } from "@/lib/email";
@@ -25,9 +26,6 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Subject and message are required" }, { status: 400 });
         }
 
-        const portalLink = `${process.env.NEXTAUTH_URL}/candidate/register`;
-        const finalMessageTemplate = message.replace(/{{portal_link}}/g, portalLink);
-
         const results = {
             success: 0,
             failed: 0,
@@ -39,9 +37,14 @@ export async function POST(req: NextRequest) {
             const cleanEmail = email.trim();
             if (!cleanEmail) continue;
 
+            // Generate a unique token for tracking
+            const token = crypto.randomUUID();
+            const personalPortalLink = `${process.env.NEXTAUTH_URL}/invite?token=${token}`;
+            const personalMessage = message.replace(/{{portal_link}}/g, personalPortalLink);
+
             const finalHtml = `
                 <div style="font-family: sans-serif; padding: 20px;">
-                    <p>${finalMessageTemplate.replace(/\n/g, '<br>')}</p>
+                    <p>${personalMessage.replace(/\n/g, '<br>')}</p>
                     <br/>
                     <p style="font-size: 12px; color: #666;">
                         You are receiving this email because you were invited to apply at RecruitAI.
