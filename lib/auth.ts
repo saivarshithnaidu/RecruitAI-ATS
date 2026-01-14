@@ -46,14 +46,15 @@ export const authOptions: NextAuthOptions = {
 
                 try {
                     // 1. MANUAL AUTH VIA PROFILES TABLE
+                    // Use ilike for case-insensitive match to prevent "Invalid credentials" due to casing
                     const { data: profile, error } = await supabaseAdmin
                         .from('profiles')
                         .select('*')
-                        .eq('email', email)
+                        .ilike('email', email)
                         .single();
 
                     if (error || !profile) {
-                        console.error("[Auth] User not found in profiles:", email);
+                        console.error("[Auth] User not found in profiles (ilike):", email, error?.message);
                         return null;
                     }
 
@@ -66,7 +67,9 @@ export const authOptions: NextAuthOptions = {
                     const isValid = await bcrypt.compare(password, profile.password_hash);
 
                     if (!isValid) {
-                        console.error("[Auth] Invalid password for:", email);
+                        console.error(`[Auth] Invalid password for: ${email}`);
+                        // Debugging: Don't log real passwords, but maybe log hash length or existence
+                        // console.log(`[Auth] Hash in DB: ${profile.password_hash.substring(0, 10)}... (Length: ${profile.password_hash.length})`); 
                         return null;
                     }
 

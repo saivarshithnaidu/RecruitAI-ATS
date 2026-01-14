@@ -47,7 +47,21 @@ export default withAuth(
     },
     {
         callbacks: {
-            authorized: ({ token }) => !!token,
+            authorized: ({ req, token }) => {
+                const pathname = req.nextUrl.pathname;
+
+                // Public paths that don't require authentication
+                if (
+                    pathname === "/" ||
+                    pathname.startsWith("/auth") ||
+                    pathname.startsWith("/api/auth") // Should be excluded by matcher, but safe to add
+                ) {
+                    return true;
+                }
+
+                // Require authentication for all other routes
+                return !!token;
+            },
         },
     }
 )
