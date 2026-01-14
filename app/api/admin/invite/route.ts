@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sendEmail } from "@/lib/email";
 import { ROLES } from "@/lib/roles";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export async function POST(req: NextRequest) {
     try {
@@ -59,6 +60,22 @@ export async function POST(req: NextRequest) {
             });
 
             if (result.success) {
+                // Track invite in database
+                const { error: dbError } = await supabaseAdmin
+                    .from('invites')
+                    .insert({
+                        email: cleanEmail,
+                        token: token,
+                        sent_at: new Date().toISOString(),
+                        clicked: false
+                    });
+
+                if (dbError) {
+                    console.error(`Failed to track invite for ${cleanEmail}:`, dbError);
+                    // Consider it a partial failure or just log? 
+                    // Proceeding as success since email was sent, but logging error.
+                }
+
                 results.success++;
             } else {
                 results.failed++;
