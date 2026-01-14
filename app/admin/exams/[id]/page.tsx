@@ -153,6 +153,7 @@ export default async function ExamDetailsPage({ params }: { params: Promise<{ id
                                         <th className="text-left py-2">Candidate</th>
                                         <th className="text-left py-2">Status</th>
                                         <th className="text-right py-2">Score</th>
+                                        <th className="text-right py-2">Proctoring</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -173,6 +174,14 @@ export default async function ExamDetailsPage({ params }: { params: Promise<{ id
                                             </td>
                                             <td className="py-3 text-right">
                                                 {a.score !== undefined ? a.score : '-'}
+                                            </td>
+                                            <td className="py-3 text-right">
+                                                <Link
+                                                    href={`/admin/proctoring/${a.id}`}
+                                                    className="text-xs bg-gray-900 text-white px-2 py-1 rounded hover:bg-black transition"
+                                                >
+                                                    Review
+                                                </Link>
                                             </td>
                                         </tr>
                                     ))}

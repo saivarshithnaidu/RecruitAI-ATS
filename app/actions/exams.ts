@@ -399,10 +399,22 @@ export async function submitExam(assignmentId: string, answers: Record<string, s
             status: resultStatus,
             score: totalScore,
             submitted_at: new Date().toISOString(),
-            answers: answers,
-            proctoring_data: proctoringData || {}
+            answers: answers
+            // proctoring_data column might not exist, so we log it separately below
         })
         .eq('id', assignmentId);
+
+    if (updateError) throw updateError;
+
+    // Log Proctoring Summary
+    if (proctoringData) {
+        await supabaseAdmin.from('exam_proctor_logs').insert({
+            exam_assignment_id: assignmentId,
+            candidate_id: session.user.id,
+            event_type: 'SUMMARY',
+            details: proctoringData
+        });
+    }
 
     if (updateError) throw updateError;
 

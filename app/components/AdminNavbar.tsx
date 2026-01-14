@@ -12,6 +12,7 @@ export default function AdminNavbar() {
         { name: 'Dashboard', href: '/admin/dashboard' },
         { name: 'Exams', href: '/admin/exams' },
         { name: 'Invite', href: '/admin/invite' },
+        { name: 'Analytics', href: '/admin/analytics' },
     ];
 
     return (

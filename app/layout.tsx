@@ -21,6 +21,9 @@ export default function RootLayout({
         <Providers>
           {children}
         </Providers>
+        <footer className="py-4 text-center text-xs text-gray-500 bg-gray-50 mt-auto">
+          We collect anonymous usage data (IP, device, browser) to improve the hiring experience.
+        </footer>
       </body>
     </html>
   );
