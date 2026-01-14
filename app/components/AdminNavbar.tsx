@@ -11,6 +11,7 @@ export default function AdminNavbar() {
     const navItems = [
         { name: 'Dashboard', href: '/admin/dashboard' },
         { name: 'Exams', href: '/admin/exams' },
+        { name: 'Invite', href: '/admin/invite' },
     ];
 
     return (
