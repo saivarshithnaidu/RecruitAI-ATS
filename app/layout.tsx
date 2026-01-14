@@ -22,7 +22,7 @@ export default function RootLayout({
           {children}
         </Providers>
         <footer className="py-4 text-center text-xs text-gray-500 bg-gray-50 mt-auto">
-          We collect anonymous usage data (IP, device, browser) to improve the hiring experience.
+          &copy; {new Date().getFullYear()} RecruitAI. All rights reserved.
         </footer>
       </body>
     </html>
