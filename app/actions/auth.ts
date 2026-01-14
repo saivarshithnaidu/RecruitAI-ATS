@@ -74,6 +74,10 @@ export async function signup(formData: FormData) {
 
         if (profileError) {
             console.error("Failed to create profile:", profileError);
+            // CRITICAL: If profile creation fails, we must rollback or throw error
+            // Otherwise user can login but has no profile/role
+            // For now, throw error which might be caught by client
+            throw new Error("Failed to create user profile. Please try again.");
         } else {
             console.log("Profile initialized with hash.");
         }

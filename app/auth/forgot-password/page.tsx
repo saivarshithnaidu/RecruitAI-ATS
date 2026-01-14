@@ -15,8 +15,10 @@ export default function ForgotPasswordPage() {
         setMessage(null);
 
         try {
+            // FIX: Use production URL or env var to prevent localhost redirects
+            const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.recruitaitech.in';
             const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-                redirectTo: `${window.location.origin}/auth/reset-password`,
+                redirectTo: `${baseUrl}/auth/reset-password`,
             });
 
             if (error) {

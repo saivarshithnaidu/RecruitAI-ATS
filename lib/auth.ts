@@ -7,6 +7,9 @@ import { ROLES, ALLOWED_ADMINS } from "@/lib/roles";
 import bcrypt from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
+    // Trust Vercel's proxy
+    // @ts-ignore
+    trustHost: true,
     session: {
         strategy: "jwt",
     },
@@ -14,6 +17,13 @@ export const authOptions: NextAuthOptions = {
         GoogleProvider({
             clientId: process.env.GOOGLE_CLIENT_ID || "",
             clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+            authorization: {
+                params: {
+                    prompt: "select_account",
+                    access_type: "offline",
+                    response_type: "code"
+                }
+            },
             async profile(profile) {
                 // Strict Role Assignment based on Email (Case Insensitive)
                 const email = profile.email?.toLowerCase();
