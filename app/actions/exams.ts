@@ -116,7 +116,12 @@ export async function createExam(data: ExamInput) {
     }
 }
 
-export async function assignExam(examId: string, candidateIds: string[]) {
+export async function assignExam(
+    examId: string,
+    candidateIds: string[],
+    scheduled_start_time: string | null = null,
+    proctoring_config: any = { camera: false, mic: false, tab_switch: true, copy_paste: true }
+) {
     const session = await getServerSession(authOptions);
     // @ts-ignore
     if (!session || session.user?.role !== 'ADMIN') {
@@ -131,14 +136,16 @@ export async function assignExam(examId: string, candidateIds: string[]) {
             .eq('id', examId)
             .single();
 
-        if (!examData || examData.status !== 'READY') {
+        if (!examData || (examData.status !== 'READY' && examData.status !== 'READY_FALLBACK')) {
             return { error: `Exam is not verified (Status: ${examData?.status || 'Unknown'}). Please verify the exam first.` };
         }
 
         const assignments = candidateIds.map(cid => ({
             exam_id: examId,
             candidate_id: cid,
-            status: 'assigned'
+            status: 'assigned',
+            scheduled_start_time: scheduled_start_time,
+            proctoring_config: proctoring_config
         }));
 
         const { error } = await supabaseAdmin

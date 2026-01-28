@@ -25,19 +25,40 @@ export async function getProfile() {
         return null
     }
 
-    const { data: profile, error } = await supabaseAdmin
-        .from('candidate_profiles')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .single()
+    // Try finding by ID first
+    let profile = null;
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(session.user.id);
 
-    if (error && error.code !== 'PGRST116') {
-        console.error("Profile fetch error", error)
-        return null
+    if (isUUID) {
+        const { data } = await supabaseAdmin
+            .from('candidate_profiles')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .single();
+        profile = data;
+    }
+
+    // Fallback: Find by Email if ID failed
+    if (!profile) {
+        console.log(`[getProfile] Profile not found by ID (UUID valid: ${isUUID}). Trying email: ${session.user.email}`);
+        const { data: dataByEmail } = await supabaseAdmin
+            .from('candidate_profiles')
+            .select('*')
+            .eq('email', session.user.email)
+            .single();
+
+        profile = dataByEmail;
     }
 
     if (profile) {
         return profile;
+    }
+
+    // If still no profile, and we have a valid UUID, create one.
+    // If we DON'T have a valid UUID, we cannot create a profile linked to Auth.
+    if (!isUUID) {
+        console.error("[getProfile] Cannot auto-create profile: Session ID is not a valid UUID", session.user.id);
+        return null;
     }
 
     // Auto-create logic if missing

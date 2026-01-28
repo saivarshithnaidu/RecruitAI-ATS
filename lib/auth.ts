@@ -130,18 +130,40 @@ export const authOptions: NextAuthOptions = {
                         if (newUser?.user) {
                             finalId = newUser.user.id;
                             console.log(`[Auth] Created new Shadow User: ${finalId}`);
-                        } else if (createError?.message?.includes('already registered')) {
-                            // 2. If exists, find it (Brute-force list for now, acceptable for internal tool)
+                        } else {
+                            // If creation failed (likely already exists), try to find the user
+                            // 2. Search in Auth Users List
                             // @ts-ignore
                             const { data: list } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
-                            const match = list.users.find((u: any) => u.email?.toLowerCase() === user.email?.toLowerCase());
+                            const match = list?.users?.find((u: any) => u.email?.toLowerCase() === user.email?.toLowerCase());
+
                             if (match) {
                                 finalId = match.id;
-                                console.log(`[Auth] Resolved existing UUID: ${finalId}`);
+                                console.log(`[Auth] Resolved existing UUID from Auth List: ${finalId}`);
                             } else {
-                                // 3. Fallback to Profile lookup
-                                const { data: profile } = await supabaseAdmin.from('profiles').select('id').eq('email', user.email).single();
-                                if (profile) finalId = profile.id;
+                                // 3. Fallback to 'profiles' table (Legacy/Manual users)
+                                const { data: profile } = await supabaseAdmin
+                                    .from('profiles')
+                                    .select('id')
+                                    .eq('email', user.email)
+                                    .single();
+
+                                if (profile) {
+                                    finalId = profile.id; // Usually this is user_id but check schema if it's the PK
+                                    console.log(`[Auth] Resolved UUID from profiles: ${finalId}`);
+                                } else {
+                                    // 4. Fallback to 'candidate_profiles' table (New Candidates)
+                                    const { data: candidateProfile } = await supabaseAdmin
+                                        .from('candidate_profiles')
+                                        .select('user_id')
+                                        .eq('email', user.email)
+                                        .single();
+
+                                    if (candidateProfile) {
+                                        finalId = candidateProfile.user_id;
+                                        console.log(`[Auth] Resolved UUID from candidate_profiles: ${finalId}`);
+                                    }
+                                }
                             }
                         }
                     } catch (e) {

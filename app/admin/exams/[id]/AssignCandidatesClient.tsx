@@ -15,6 +15,15 @@ export default function AssignCandidatesClient({
     const [loading, setLoading] = useState(false);
     const router = useRouter();
 
+    // New State for Scheduling & Proctoring
+    const [scheduledTime, setScheduledTime] = useState("");
+    const [proctoring, setProctoring] = useState({
+        camera: false,
+        mic: false,
+        tab_switch: true,
+        copy_paste: true
+    });
+
     const toggle = (id: string) => {
         const next = new Set(selectedids);
         if (next.has(id)) next.delete(id);
@@ -26,9 +35,19 @@ export default function AssignCandidatesClient({
         if (selectedids.size === 0) return;
         setLoading(true);
         try {
-            await assignExam(examId, Array.from(selectedids));
+            const timeToSend = scheduledTime ? new Date(scheduledTime).toISOString() : null;
+
+            await assignExam(
+                examId,
+                Array.from(selectedids),
+                timeToSend,
+                proctoring
+            );
+
             setSelectedIds(new Set());
+            setScheduledTime(""); // Reset time
             router.refresh();
+            alert("Candidates assigned successfully!");
         } catch (e) {
             console.error(e);
             alert("Failed to assign");
@@ -39,6 +58,61 @@ export default function AssignCandidatesClient({
 
     return (
         <div>
+            {/* Scheduling Section */}
+            <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Scheduled Start Time (Optional)</label>
+                <input
+                    type="datetime-local"
+                    className="w-full border rounded p-2 text-sm"
+                    value={scheduledTime}
+                    onChange={(e) => setScheduledTime(e.target.value)}
+                />
+                <p className="text-xs text-gray-500 mt-1">If set, candidates can only start around this time.</p>
+            </div>
+
+            {/* Proctoring Controls */}
+            <div className="mb-4 border p-3 rounded bg-gray-50">
+                <h4 className="text-sm font-bold text-gray-700 mb-2">Proctoring Controls</h4>
+                <div className="grid grid-cols-2 gap-2">
+                    <label className="flex items-center space-x-2">
+                        <input
+                            type="checkbox"
+                            checked={proctoring.camera}
+                            onChange={(e) => setProctoring({ ...proctoring, camera: e.target.checked })}
+                            className="rounded h-4 w-4 text-blue-600"
+                        />
+                        <span className="text-xs">Camera On</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                        <input
+                            type="checkbox"
+                            checked={proctoring.mic}
+                            onChange={(e) => setProctoring({ ...proctoring, mic: e.target.checked })}
+                            className="rounded h-4 w-4 text-blue-600"
+                        />
+                        <span className="text-xs">Microphone On</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                        <input
+                            type="checkbox"
+                            checked={proctoring.tab_switch}
+                            onChange={(e) => setProctoring({ ...proctoring, tab_switch: e.target.checked })}
+                            className="rounded h-4 w-4 text-blue-600"
+                        />
+                        <span className="text-xs">Detect Tab Switch</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                        <input
+                            type="checkbox"
+                            checked={proctoring.copy_paste}
+                            onChange={(e) => setProctoring({ ...proctoring, copy_paste: e.target.checked })}
+                            className="rounded h-4 w-4 text-blue-600"
+                        />
+                        <span className="text-xs">Block Copy/Paste</span>
+                    </label>
+                </div>
+            </div>
+
             <div className="max-h-60 overflow-y-auto border rounded mb-4">
                 {candidates.map(c => (
                     <div key={c.user_id} className="flex items-center p-2 border-b last:border-0 hover:bg-gray-50">

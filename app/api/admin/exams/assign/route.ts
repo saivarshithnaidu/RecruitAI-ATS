@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
         // 1.5 Verify Exam Status
         const { data: examData, error: examFetchError } = await supabaseAdmin
             .from('exams')
-            .select('status, questions:exam_questions(count)')
+            .select('status, questions_data, questions:exam_questions(count)')
             .eq('id', exam_id)
             .single();
 
@@ -52,8 +52,13 @@ export async function POST(req: NextRequest) {
             }, { status: 400 });
         }
 
+        // Check for questions in BOTH New JSON format and Legacy Table
         // @ts-ignore
-        if (examData.questions && examData.questions[0] && examData.questions[0].count === 0) {
+        const hasJsonQuestions = examData.questions_data && Array.isArray(examData.questions_data) && examData.questions_data.length > 0;
+        // @ts-ignore
+        const hasLegacyQuestions = examData.questions && examData.questions[0] && examData.questions[0].count > 0;
+
+        if (!hasJsonQuestions && !hasLegacyQuestions) {
             return NextResponse.json({ error: "Exam has no questions. Please Retry Generation." }, { status: 400 });
         }
 
