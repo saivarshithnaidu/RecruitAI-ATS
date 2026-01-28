@@ -25,9 +25,9 @@ export async function createExam(data: ExamInput) {
     }
 
     try {
-        // 1. Generate Sections (Synchronous)
-        console.log(`Generating exam via Server Action for ${data.role}...`);
+        console.log(`[CreateExam] Starting for role: ${data.role}`);
 
+        // 1. Generate Sections (Synchronous)
         let sections: any[] = [];
         try {
             sections = await generateExamPaper(data.role, [data.role], data.difficulty);
@@ -39,7 +39,56 @@ export async function createExam(data: ExamInput) {
             return { error: "Exam generation failed. Please retry." };
         }
 
-        // 2. Create Exam Record as READY
+        // 2. Resolve Creator UUID
+        let creatorId = session.user.id;
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+        if (!uuidRegex.test(creatorId)) {
+            console.log(`[CreateExam] Invalid UUID ${creatorId}. Resolving via email: ${session.user.email}`);
+
+            // Strategy A: Try creating user (Most reliable if missing)
+            const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+                email: session.user.email || undefined,
+                email_confirm: true,
+                user_metadata: { role: 'ADMIN', full_name: session.user.name }
+            });
+
+            if (newUser?.user) {
+                console.log(`[CreateExam] Created new user: ${newUser.user.id}`);
+                creatorId = newUser.user.id;
+            } else if (createError?.message?.includes("already registered") || createError) {
+                console.log(`[CreateExam] User exists (Error: ${createError.message}). Searching...`);
+
+                // Strategy B: Find existing user
+                // @ts-ignore
+                const { data: listData } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }); // Increase limit
+                // @ts-ignore
+                const validUser = listData?.users?.find((u: any) => u.email?.toLowerCase() === session.user.email?.toLowerCase());
+
+                if (validUser?.id) {
+                    console.log(`[CreateExam] Found existing user: ${validUser.id}`);
+                    creatorId = validUser.id;
+                } else {
+                    // Strategy C: Check Profile as last resort
+                    const { data: profile } = await supabaseAdmin.from('profiles').select('id').eq('email', session.user.email).single();
+                    if (profile?.id) {
+                        console.log(`[CreateExam] Found profile: ${profile.id}`);
+                        creatorId = profile.id;
+                    } else {
+                        throw new Error("Failed to resolve Admin UUID. User exists but cannot be found.");
+                    }
+                }
+            } else {
+                throw new Error("Failed to create Admin User.");
+            }
+        }
+
+        // Final Safety Check
+        if (!uuidRegex.test(creatorId)) {
+            throw new Error(`CRITICAL: Failed to resolve valid UUID. Current ID: ${creatorId}`);
+        }
+
+        // 3. Create Exam Record
         const { data: exam, error: examError } = await supabaseAdmin
             .from('exams')
             .insert({
@@ -49,24 +98,21 @@ export async function createExam(data: ExamInput) {
                 difficulty: data.difficulty,
                 duration_minutes: data.duration_minutes,
                 pass_mark: data.pass_mark,
-                created_by: session.user.id,
+                created_by: creatorId,
                 status: 'DRAFT',
-                questions_data: sections // Store structure
+                questions_data: sections
             })
             .select()
             .single();
 
         if (examError) throw examError;
 
-        // 3. Skip legacy 'exam_questions' insert. 
-        // We rely on questions_data.
-
         revalidatePath('/admin/exams');
         return { success: true, examId: exam.id };
 
     } catch (error: any) {
         console.error("Create Exam Error:", error);
-        return { error: error.message };
+        return { error: error.message || "Failed to create exam" };
     }
 }
 
@@ -165,6 +211,8 @@ export async function getCandidateExam() {
                 started_at,
                 submitted_at,
                 score,
+                proctoring_config,
+                scheduled_start_time,
                 exams (
                     id,
                     title,
@@ -248,6 +296,28 @@ export async function startExam(assignmentId: string) {
     }
 
     if (assignment.status === 'assigned') {
+        // SCHEDULING CHECK
+        if (assignment.scheduled_start_time) {
+            const scheduledInfo = new Date(assignment.scheduled_start_time);
+            const now = new Date();
+            const timeDiff = scheduledInfo.getTime() - now.getTime();
+            const minutesUntilStart = timeDiff / (1000 * 60);
+
+            // Allow 15 mins early
+            if (minutesUntilStart > 15) {
+                return { error: `This exam is scheduled for ${scheduledInfo.toLocaleString()}. You can enter 15 minutes before the start time.` };
+            }
+
+            // SCHEDULING CHECK: LATE ENTRY / EXAM CLOSED
+            // Calculate Duration (Override > Exam Default > 60)
+            const durationMins = assignment.duration_override_minutes || assignment.exams?.duration_minutes || 60;
+            const endTime = new Date(scheduledInfo.getTime() + (durationMins * 60 * 1000));
+
+            if (now > endTime) {
+                return { error: "This exam session has ended. Please contact the administrator." };
+            }
+        }
+
         const { error } = await supabaseAdmin
             .from('exam_assignments')
             .update({
@@ -348,8 +418,9 @@ export async function submitExam(assignmentId: string, answers: Record<string, s
         questionsData.forEach((section: any) => {
             section.questions.forEach((q: any) => {
                 if (q.type === 'coding') {
-                    const sub = codingSubs?.find(s => s.question_id === q.id);
-                    if (sub && sub.passed) { // 'passed' column from random simulation in coding.ts
+                    // Fix: coding_submissions uses 'question_idx' to store the Question ID
+                    const sub = codingSubs?.find(s => s.question_idx === q.id);
+                    if (sub && sub.status === 'passed') {
                         totalScore += (q.marks || 10);
                     }
                 }

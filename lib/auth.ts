@@ -111,8 +111,45 @@ export const authOptions: NextAuthOptions = {
     callbacks: {
         async jwt({ token, user, trigger, session }) {
             if (user) {
-                console.log(`[Auth] JWT Callback: User ${user.email} has role ${user.role}`);
-                token.sub = user.id
+                console.log(`[Auth] User logged in: ${user.email} (Provider ID: ${user.id})`);
+
+                let finalId = user.id;
+
+                // FIX: If Provider ID is not variable UUID (e.g. Google Numeric), resolve Supabase UUID
+                const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                if (!uuidRegex.test(finalId) && user.email) {
+                    try {
+                        console.log(`[Auth] Resolving UUID for ${user.email}...`);
+                        // 1. Try Create (Fastest if new)
+                        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+                            email: user.email,
+                            email_confirm: true,
+                            user_metadata: { role: user.role, full_name: user.name }
+                        });
+
+                        if (newUser?.user) {
+                            finalId = newUser.user.id;
+                            console.log(`[Auth] Created new Shadow User: ${finalId}`);
+                        } else if (createError?.message?.includes('already registered')) {
+                            // 2. If exists, find it (Brute-force list for now, acceptable for internal tool)
+                            // @ts-ignore
+                            const { data: list } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+                            const match = list.users.find((u: any) => u.email?.toLowerCase() === user.email?.toLowerCase());
+                            if (match) {
+                                finalId = match.id;
+                                console.log(`[Auth] Resolved existing UUID: ${finalId}`);
+                            } else {
+                                // 3. Fallback to Profile lookup
+                                const { data: profile } = await supabaseAdmin.from('profiles').select('id').eq('email', user.email).single();
+                                if (profile) finalId = profile.id;
+                            }
+                        }
+                    } catch (e) {
+                        console.error("[Auth] UUID Resolution Failed:", e);
+                    }
+                }
+
+                token.sub = finalId;
                 // @ts-ignore
                 token.role = user.role
             }

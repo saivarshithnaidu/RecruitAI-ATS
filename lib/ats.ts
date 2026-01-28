@@ -214,7 +214,8 @@ export async function scoreApplication(applicationId: string) {
         // 65 is usually "Hold".
         // I will SKIP email for Fallback to avoid sending "Rejected" prematurely.
         if (finalStatus !== 'SCORED_FALLBACK') {
-            await sendResultEmail(application.email, application.full_name, finalStatus, atsScore);
+            const normalizedStatus = finalStatus.toLowerCase();
+            await sendResultEmail(application.email, application.full_name, normalizedStatus, atsScore);
         }
 
         return { success: true, status: finalStatus, score: atsScore, summary: atsSummary };

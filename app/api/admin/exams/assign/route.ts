@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { exam_id, candidate_id } = body;
+        const { exam_id, candidate_id, scheduled_start_time, proctoring_config } = body;
 
         if (!exam_id || !candidate_id) {
             return NextResponse.json({ error: "Missing exam_id or candidate_id" }, { status: 400 });
@@ -63,7 +63,9 @@ export async function POST(req: NextRequest) {
             .insert({
                 exam_id,
                 candidate_id,
-                status: 'assigned'
+                status: 'assigned',
+                scheduled_start_time: scheduled_start_time || null,
+                proctoring_config: proctoring_config || { camera: false, mic: false, tab_switch: true, copy_paste: true }
             });
 
         if (assignError) {

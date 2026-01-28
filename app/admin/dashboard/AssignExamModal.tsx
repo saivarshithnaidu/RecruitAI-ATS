@@ -50,6 +50,14 @@ export default function AssignExamModal({
         }
     };
 
+    const [scheduledTime, setScheduledTime] = useState("");
+    const [proctoring, setProctoring] = useState({
+        camera: false,
+        mic: false,
+        tab_switch: true,
+        copy_paste: true
+    });
+
     const handleAssign = async () => {
         if (!selectedExam) return;
         setLoading(true);
@@ -61,7 +69,9 @@ export default function AssignExamModal({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     exam_id: selectedExam,
-                    candidate_id: candidateId
+                    candidate_id: candidateId,
+                    scheduled_start_time: scheduledTime ? new Date(scheduledTime).toISOString() : null,
+                    proctoring_config: proctoring
                 })
             });
 
@@ -85,7 +95,7 @@ export default function AssignExamModal({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl relative z-[60]">
+            <div className="bg-white rounded-lg p-6 w-full max-w-lg shadow-xl relative z-[60] max-h-[90vh] overflow-y-auto">
                 <h3 className="text-lg font-bold mb-4">Assign Exam to {candidateName}</h3>
 
                 {error && <div className="bg-red-50 text-red-600 p-2 text-sm rounded mb-4">{error}</div>}
@@ -117,6 +127,59 @@ export default function AssignExamModal({
                             })}
                         </select>
                     )}
+                </div>
+
+                <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Scheduled Start Time (Optional)</label>
+                    <input
+                        type="datetime-local"
+                        className="w-full border rounded p-2"
+                        value={scheduledTime}
+                        onChange={(e) => setScheduledTime(e.target.value)}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">If set, candidate can only start around this time.</p>
+                </div>
+
+                <div className="mb-6 border p-4 rounded bg-gray-50">
+                    <h4 className="text-sm font-bold text-gray-700 mb-3">Proctoring Controls</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                        <label className="flex items-center space-x-2">
+                            <input
+                                type="checkbox"
+                                checked={proctoring.camera}
+                                onChange={(e) => setProctoring({ ...proctoring, camera: e.target.checked })}
+                                className="rounded"
+                            />
+                            <span className="text-sm">Camera On</span>
+                        </label>
+                        <label className="flex items-center space-x-2">
+                            <input
+                                type="checkbox"
+                                checked={proctoring.mic}
+                                onChange={(e) => setProctoring({ ...proctoring, mic: e.target.checked })}
+                                className="rounded"
+                            />
+                            <span className="text-sm">Microphone On</span>
+                        </label>
+                        <label className="flex items-center space-x-2">
+                            <input
+                                type="checkbox"
+                                checked={proctoring.tab_switch}
+                                onChange={(e) => setProctoring({ ...proctoring, tab_switch: e.target.checked })}
+                                className="rounded"
+                            />
+                            <span className="text-sm">Detect Tab Switch</span>
+                        </label>
+                        <label className="flex items-center space-x-2">
+                            <input
+                                type="checkbox"
+                                checked={proctoring.copy_paste}
+                                onChange={(e) => setProctoring({ ...proctoring, copy_paste: e.target.checked })}
+                                className="rounded"
+                            />
+                            <span className="text-sm">Block Copy/Paste</span>
+                        </label>
+                    </div>
                 </div>
 
                 <div className="flex justify-end gap-2">

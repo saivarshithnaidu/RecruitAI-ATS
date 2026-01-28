@@ -53,25 +53,9 @@ export async function submitCode(data: CodeSubmission) {
         output = "Syntax Error: Unexpected EOF";
     }
 
-    // Save to Database
-    const { error } = await supabaseAdmin
-        .from('coding_submissions')
-        .upsert({
-            assignment_id: data.assignmentId,
-            question_idx: data.questionIdx,
-            code: data.code,
-            language: data.language,
-            test_cases_passed: passed ? (data.testCases?.length || 5) : 0,
-            total_test_cases: data.testCases?.length || 5,
-            status: passed ? 'passed' : 'failed',
-            output_log: output,
-            updated_at: new Date().toISOString()
-        }, { onConflict: 'assignment_id, question_idx' });
-    // Note: constraint might need to be created if uniqueness is strictly enforced by (assignment_id, question_idx)
-    // My SQL didn't add unique constraint explicitly, but logic assumes one submission per question per assignment.
-    // I will rely on 'insert' and if it duplicates, we just take latest. Upsert requires unique constraint.
-    // Since I didn't add the constraint in SQL, I'll use INSERT. Or SELECT + UPDATE.
-    // I'll do SELECT check first then UPDATE or INSERT.
+    // FIX: Removed duplicate 'upsert' call which caused double entries or errors.
+    // Relying on Manual Check below to handle "No Constraint" DB state safely.
+
 
     // Manual Upsert Logic
     const { data: existing } = await supabaseAdmin

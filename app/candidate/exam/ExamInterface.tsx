@@ -147,6 +147,9 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
         return () => clearInterval(timer);
     }, [status, timeLeft]);
 
+    // --- PROCTORING CONFIG ---
+    const config = exam.proctoring_config || { camera: true, mic: true, tab_switch: true, copy_paste: true };
+
     // --- SECURITY EVENTS ---
     useEffect(() => {
         if (status !== 'in_progress') return;
@@ -160,13 +163,17 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
 
         // 2. Prevent Copy/Paste
         const handleCopyPaste = (e: ClipboardEvent) => {
-            e.preventDefault();
-            logEvent(e.type.toUpperCase());
-            alert("Copy/Paste/Cut is disabled during the exam.");
+            if (config.copy_paste) {
+                e.preventDefault();
+                logEvent(e.type.toUpperCase());
+                alert("Copy/Paste/Cut is disabled during the exam.");
+            }
         };
-        window.addEventListener('paste', handleCopyPaste);
-        window.addEventListener('copy', handleCopyPaste);
-        window.addEventListener('cut', handleCopyPaste);
+        if (config.copy_paste) {
+            window.addEventListener('paste', handleCopyPaste);
+            window.addEventListener('copy', handleCopyPaste);
+            window.addEventListener('cut', handleCopyPaste);
+        }
 
         // 3. Tab Visibility
         const handleVisibilityChange = () => {
@@ -175,7 +182,9 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
                 logEvent('TAB_SWITCH');
             }
         };
-        document.addEventListener('visibilitychange', handleVisibilityChange);
+        if (config.tab_switch) {
+            document.addEventListener('visibilitychange', handleVisibilityChange);
+        }
 
         // 4. Fullscreen Check
         const handleFullscreenChange = () => {
@@ -188,20 +197,23 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
                 });
             }
         };
-        document.addEventListener('fullscreenchange', handleFullscreenChange);
-
-        // 5. Audio Monitoring (Basic)
-        // ... (Audio code remains similar, keeping it concise) ...
+        if (config.tab_switch) { // Bundle fullscreen with tab switch or separate? User requested "Detect Tab Switch". Usually implicit.
+            document.addEventListener('fullscreenchange', handleFullscreenChange);
+        }
 
         return () => {
             window.removeEventListener('contextmenu', handleContextMenu);
-            window.removeEventListener('paste', handleCopyPaste);
-            window.removeEventListener('copy', handleCopyPaste);
-            window.removeEventListener('cut', handleCopyPaste);
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
-            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            if (config.copy_paste) {
+                window.removeEventListener('paste', handleCopyPaste);
+                window.removeEventListener('copy', handleCopyPaste);
+                window.removeEventListener('cut', handleCopyPaste);
+            }
+            if (config.tab_switch) {
+                document.removeEventListener('visibilitychange', handleVisibilityChange);
+                document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            }
         };
-    }, [status, logEvent]);
+    }, [status, logEvent, config]);
 
 
     // --- ACTIONS ---
@@ -323,41 +335,43 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
                     <div className="bg-blue-50 text-blue-800 p-6 rounded-lg text-left mb-8 space-y-2">
                         <h3 className="font-bold border-b border-blue-200 pb-2 mb-2">Exam Rules</h3>
                         <li>Duration: <strong>{durationMins} mins</strong></li>
-                        <li><strong>Fullscreen Mandatory:</strong> Exiting will flag you.</li>
-                        <li><strong>No Tab Switching:</strong> Violations are logged.</li>
-                        <li><strong>Camera & Mic:</strong> Must remain on.</li>
+                        {config.tab_switch && <li><strong>Fullscreen & No Tab Switching:</strong> Violations are logged.</li>}
+                        {(config.camera || config.mic) && <li><strong>Camera & Mic:</strong> Must remain on.</li>}
+                        {!config.camera && !config.mic && <li><strong>Open Book Possible:</strong> But do not switch tabs if monitored.</li>}
                     </div>
 
                     <div className="space-y-6">
-                        <div className="flex flex-col items-center gap-4">
-                            {/* Camera Preview Box */}
-                            <div className="w-64 h-48 bg-black rounded-lg overflow-hidden relative border-4 border-gray-200 flex items-center justify-center">
-                                {stream ? (
-                                    <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover transform scale-x-[-1]" />
+                        {(config.camera || config.mic) && (
+                            <div className="flex flex-col items-center gap-4">
+                                {/* Camera Preview Box */}
+                                <div className="w-64 h-48 bg-black rounded-lg overflow-hidden relative border-4 border-gray-200 flex items-center justify-center">
+                                    {stream ? (
+                                        <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover transform scale-x-[-1]" />
+                                    ) : (
+                                        <span className="text-gray-500">Camera Preview</span>
+                                    )}
+                                </div>
+
+                                {!cameraVerified ? (
+                                    <button onClick={performSystemCheck} className="px-6 py-2 bg-gray-800 text-white rounded hover:bg-black transition">
+                                        Check System ({config.camera ? 'Camera' : ''}{config.camera && config.mic ? ' & ' : ''}{config.mic ? 'Mic' : ''})
+                                    </button>
                                 ) : (
-                                    <span className="text-gray-500">Camera Preview</span>
+                                    <div className="text-green-600 font-bold flex items-center gap-2">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                                        System Verified
+                                    </div>
                                 )}
                             </div>
-
-                            {!cameraVerified ? (
-                                <button onClick={performSystemCheck} className="px-6 py-2 bg-gray-800 text-white rounded hover:bg-black transition">
-                                    Check System (Camera/Mic)
-                                </button>
-                            ) : (
-                                <div className="text-green-600 font-bold flex items-center gap-2">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                                    System Verified
-                                </div>
-                            )}
-                        </div>
+                        )}
 
                         {error && <div className="text-red-600 bg-red-50 p-3 rounded">{error}</div>}
 
                         <button
                             onClick={handleStart}
-                            disabled={!cameraVerified || loading}
+                            disabled={((config.camera || config.mic) && !cameraVerified) || loading}
                             className={`w-full py-4 text-lg font-bold rounded-lg text-white transition
-                                ${cameraVerified ? 'bg-blue-600 hover:bg-blue-700 shadow-lg transform hover:-translate-y-1' : 'bg-gray-300 cursor-not-allowed'}
+                                ${((config.camera || config.mic) && !cameraVerified) ? 'bg-gray-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 shadow-lg transform hover:-translate-y-1'}
                             `}
                         >
                             {loading ? 'Starting...' : 'Start Exam'}

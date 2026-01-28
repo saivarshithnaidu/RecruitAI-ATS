@@ -102,21 +102,30 @@ async function generateWithOpenRouter(prompt: string): Promise<any> {
 }
 
 export async function generateExamPaper(role: string, skills: string[], difficulty: string): Promise<any> {
-    const prompt = `You are a strict technical examiner. Generate a complete 3-section exam for:
+    const prompt = `You are a strict technical examiner. Generate a complete 4-section exam for:
 Role: ${role}
 Skills: ${skills.join(', ')}
 Difficulty: ${difficulty}
 
 MANDATORY STRUCTURE:
 SECTION 1: Aptitude (10 Questions)
-- 7 Quantitative MCQs
-- 3 Logical Reasoning MCQs
+- 7 Quantitative MCQs (Math, Data Interpretation)
+- 3 Logical Reasoning MCQs (Pattern matching, puzzles)
 
 SECTION 2: Verbal Ability (5 Questions)
-- 5 Verbal/Grammar MCQs
+- 5 Verbal/Grammar MCQs (English comprehension, error spotting)
 
-SECTION 3: Coding (2 Questions)
-- 2 Coding Problems suitable for ${role}
+SECTION 3: Technical MCQs (10 Questions)
+- 10 Technical MCQs strictly based on the Role/Skills.
+- If Frontend: React, CSS, DOM, JS concepts.
+- If Backend: DB (SQL), API design, Server logic, DSA.
+- If Fullstack: Mixed stack questions.
+
+SECTION 4: Coding (2 Questions)
+- 2 Coding Problems tailored to the role:
+  - If Frontend: React/JS/HTML/CSS based challenges (e.g. "Create a counter", "Fix this bug").
+  - If Backend: API/SQL/Algo challenges (e.g. "Optimize query", "API limit logic").
+  - If Fullstack: Mix of both.
 - MUST allow Python, Java, C++, JS solutions.
 
 RETURN JSON ONLY with this exact schema:
@@ -134,7 +143,7 @@ RETURN JSON ONLY with this exact schema:
           "correct_answer": "Option string",
           "marks": 2
         }
-        ... (10 questions total)
+        ... (10 questions)
       ]
     },
     {
@@ -146,10 +155,17 @@ RETURN JSON ONLY with this exact schema:
     },
     {
       "id": "section_3",
+      "title": "Technical Domain",
+      "questions": [
+        ... (10 questions - Technical MCQs)
+      ]
+    },
+    {
+      "id": "section_4",
       "title": "Coding Challenge",
       "questions": [
         {
-          "id": 16,
+          "id": 26,
           "type": "coding",
           "question": "Problem Statement...",
           "input_format": "Input description...",
@@ -170,8 +186,8 @@ RETURN JSON ONLY with this exact schema:
     try {
         const result = await generateWithOpenRouter(prompt);
         // Validate structure briefly
-        if (!result.sections || result.sections.length < 3) {
-            console.warn("AI generated incomplete sections, retrying or fallback logic needed.");
+        if (!result.sections || result.sections.length < 4) {
+            console.warn("AI generated incomplete sections (expected 4), retrying or fallback logic needed.");
             // For now, return what we have, or throw.
             if (!result.sections) throw new Error("Invalid structure");
         }
