@@ -334,6 +334,11 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
 
                     <div className="bg-blue-50 text-blue-800 p-6 rounded-lg text-left mb-8 space-y-2">
                         <h3 className="font-bold border-b border-blue-200 pb-2 mb-2">Exam Rules</h3>
+                        {exam.scheduled_start_time && (
+                            <li className="text-blue-900 bg-blue-100/50 p-1 rounded mb-1">
+                                Start: <strong>{new Date(exam.scheduled_start_time).toLocaleString()}</strong>
+                            </li>
+                        )}
                         <li>Duration: <strong>{durationMins} mins</strong></li>
                         {config.tab_switch && <li><strong>Fullscreen & No Tab Switching:</strong> Violations are logged.</li>}
                         {(config.camera || config.mic) && <li><strong>Camera & Mic:</strong> Must remain on.</li>}
@@ -341,6 +346,7 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
                     </div>
 
                     <div className="space-y-6">
+
                         {(config.camera || config.mic) && (
                             <div className="flex flex-col items-center gap-4">
                                 {/* Camera Preview Box */}
@@ -367,11 +373,35 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
 
                         {error && <div className="text-red-600 bg-red-50 p-3 rounded">{error}</div>}
 
+                        {/* Schedule Lock */}
+                        {exam.scheduled_start_time && (() => {
+                            const startTime = new Date(exam.scheduled_start_time).getTime();
+                            const now = new Date().getTime();
+                            const diff = startTime - now;
+                            // Allow 15 mins early
+                            const canEnter = diff <= (15 * 60 * 1000);
+
+                            if (!canEnter) {
+                                return (
+                                    <div className="bg-yellow-50 text-yellow-800 p-4 rounded text-center border border-yellow-200">
+                                        <p className="font-bold">Exam is scheduled for later.</p>
+                                        <p className="text-sm mt-1">You can enter 15 minutes before the start time.</p>
+                                        <p className="mt-2 font-mono text-lg font-bold">
+                                            {new Date(exam.scheduled_start_time).toLocaleString()}
+                                        </p>
+                                    </div>
+                                )
+                            }
+                            return null;
+                        })()}
+
                         <button
                             onClick={handleStart}
-                            disabled={((config.camera || config.mic) && !cameraVerified) || loading}
+                            disabled={((config.camera || config.mic) && !cameraVerified) || loading || (exam.scheduled_start_time && new Date(exam.scheduled_start_time).getTime() - new Date().getTime() > 15 * 60 * 1000)}
                             className={`w-full py-4 text-lg font-bold rounded-lg text-white transition
-                                ${((config.camera || config.mic) && !cameraVerified) ? 'bg-gray-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 shadow-lg transform hover:-translate-y-1'}
+                                ${(((config.camera || config.mic) && !cameraVerified) || loading || (exam.scheduled_start_time && new Date(exam.scheduled_start_time).getTime() - new Date().getTime() > 15 * 60 * 1000))
+                                    ? 'bg-gray-300 cursor-not-allowed'
+                                    : 'bg-blue-600 hover:bg-blue-700 shadow-lg transform hover:-translate-y-1'}
                             `}
                         >
                             {loading ? 'Starting...' : 'Start Exam'}

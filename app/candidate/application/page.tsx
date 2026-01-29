@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ROLES } from "@/lib/roles";
 import ReuploadResume from "@/components/ReuploadResume";
 import WithdrawButton from "./WithdrawButton";
+import ScheduledTimeDisplay from "@/components/ScheduledTimeDisplay";
 
 export const dynamic = 'force-dynamic';
 
@@ -21,11 +22,11 @@ export default async function CandidateDashboard() {
         redirect("/");
     }
 
-    // Fetch Latest Application
+    // Fetch Latest Application (Match by ID OR Email)
     const { data: application, error } = await supabaseAdmin
         .from('applications')
         .select('*')
-        .eq('user_id', session.user.id)
+        .or(`user_id.eq.${session.user.id},email.eq.${session.user.email}`)
         .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -231,6 +232,19 @@ export default async function CandidateDashboard() {
                             <div className="bg-green-50 p-4 rounded-md border border-green-200">
                                 <h3 className="text-green-800 font-semibold mb-1">⚡ Skill Assessment Ready</h3>
                                 <p className="text-green-700 text-sm mb-3">Your technical exam has been assigned. You have a limited time to complete it once started.</p>
+
+                                {assignment.scheduled_start_time && (
+                                    <div className="mb-3 bg-white/60 p-2 rounded border border-green-100 flex items-center gap-2">
+                                        <span className="text-xl">📅</span>
+                                        <div>
+                                            <p className="text-green-900 text-xs font-bold uppercase tracking-wider">Scheduled Time</p>
+                                            <p className="text-green-800 font-medium text-sm">
+                                                <ScheduledTimeDisplay timestamp={assignment.scheduled_start_time} />
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <Link href="/candidate/exam" className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition font-medium">
                                     Take Exam Now
                                 </Link>
