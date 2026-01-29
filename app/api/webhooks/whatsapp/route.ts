@@ -29,7 +29,27 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        console.log('Received webhook event:', JSON.stringify(body, null, 2));
+
+        // Log incoming webhook for debugging
+        // console.log('Received webhook event:', JSON.stringify(body, null, 2));
+
+        const entry = body.entry?.[0];
+        const changes = entry?.changes?.[0];
+        const value = changes?.value;
+
+        if (value?.messages) {
+            const message = value.messages[0];
+            console.log(`[WhatsApp] Incoming Message from ${message.from}:`, message.text?.body || message.type);
+        }
+
+        if (value?.statuses) {
+            const status = value.statuses[0];
+            console.log(`[WhatsApp] Status Update: ${status.status} for ${status.recipient_id} (ID: ${status.id})`);
+
+            if (status.status === 'failed') {
+                console.error(`[WhatsApp] Message Failed: ${JSON.stringify(status.errors || status.error, null, 2)}`);
+            }
+        }
 
         return NextResponse.json({ success: true }, { status: 200 });
     } catch (error) {

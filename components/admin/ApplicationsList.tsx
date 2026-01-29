@@ -17,6 +17,12 @@ interface Application {
     created_at: string;
     applied_at?: string;
     profiles?: any;
+    invite_tracking?: {
+        status: string;
+        sent_at: string;
+        clicked_at: string;
+        exam_status: string;
+    };
 }
 
 interface ApplicationsListProps {
@@ -69,6 +75,25 @@ export default function ApplicationsList({ applications, onScore, onUpdateStatus
                                                         'bg-gray-100 text-gray-800'}`}>
                                             {app.status.replace('_', ' ')}
                                         </span>
+                                        {/* Tracking Info */}
+                                        {app.invite_tracking && (
+                                            <div className="mt-1 flex flex-col gap-0.5 text-[10px] text-gray-500">
+                                                {app.invite_tracking.status === 'sent' && (
+                                                    <span className="flex items-center gap-1 text-orange-600">
+                                                        ✉ Invite Sent
+                                                    </span>
+                                                )}
+                                                {app.invite_tracking.status === 'clicked' && (
+                                                    <span className="flex items-center gap-1 text-blue-600 font-bold">
+                                                        🖱 Clicked
+                                                    </span>
+                                                )}
+                                                {/* If they have started, the main status will likely reflect EXAM_IN_PROGRESS, so we skip registered check if redundancy implies it */}
+                                                {app.invite_tracking.exam_status === 'in_progress' && (
+                                                    <span className="text-purple-600 animate-pulse">● In Progress</span>
+                                                )}
+                                            </div>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         {(app.ats_score > 0) ? (

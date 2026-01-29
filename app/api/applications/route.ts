@@ -46,6 +46,21 @@ export async function GET() {
             profiles.forEach(p => profileMap.set(p.user_id, p));
         }
 
+        // Fetch Exam Assignments for Tracking
+        const { data: assignments } = await supabaseAdmin
+            .from('exam_assignments')
+            .select('candidate_id, status, invite_status, invite_sent_at, invite_clicked_at')
+            .in('candidate_id', userIds);
+
+        const assignmentMap = new Map();
+        if (assignments) {
+            assignments.forEach(a => {
+                // We might have multiple, get the latest or just the one relevant.
+                // For simplicity, just map by candidate_id, overwriting if multiple (assuming latest active is what we care about or filtered by status)
+                assignmentMap.set(a.candidate_id, a);
+            });
+        }
+
         // Generate Signed URLs and Attach Profile
         const applications = await Promise.all(applicationsRaw.map(async (app) => {
             let signedUrl = app.resume_url;
@@ -61,10 +76,17 @@ export async function GET() {
             }
 
             const candidateProfile = profileMap.get(app.user_id);
+            const assignment = assignmentMap.get(app.user_id);
 
             return {
                 ...app,
                 resume_url: signedUrl,
+                invite_tracking: assignment ? {
+                    status: assignment.invite_status,
+                    sent_at: assignment.invite_sent_at,
+                    clicked_at: assignment.invite_clicked_at,
+                    exam_status: assignment.status
+                } : null,
                 profiles: candidateProfile ? {
                     mobile_number: candidateProfile.phone, // Map new col to old key for frontend compatibility
                     summary: candidateProfile.summary,

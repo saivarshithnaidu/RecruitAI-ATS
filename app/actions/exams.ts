@@ -30,7 +30,23 @@ export async function createExam(data: ExamInput) {
         // 1. Generate Sections (Synchronous)
         let sections: any[] = [];
         try {
-            sections = await generateExamPaper(data.role, [data.role], data.difficulty);
+            // Define topics based on Role
+            const roleKey = data.role.toLowerCase();
+            let topics: string[] = ['Aptitude', 'Verbal Reasoning', 'Coding Logic']; // Defaults
+
+            if (roleKey.includes('frontend') || roleKey.includes('ui')) {
+                topics = ['Aptitude', 'Verbal Reasoning', 'HTML/CSS', 'JavaScript/React', 'Frontend Coding'];
+            } else if (roleKey.includes('backend') || roleKey.includes('api')) {
+                topics = ['Aptitude', 'Verbal Reasoning', 'Database/SQL', 'Node.js/API', 'Backend Coding'];
+            } else if (roleKey.includes('full') || roleKey.includes('stack')) {
+                topics = ['Aptitude', 'Verbal Reasoning', 'Frontend Basics', 'Backend Logic', 'Full Stack Coding'];
+            } else if (roleKey.includes('data') || roleKey.includes('analyst')) {
+                topics = ['Aptitude', 'Verbal Reasoning', 'Statistics', 'SQL/Data', 'Python Coding'];
+            }
+
+            console.log(`[CreateExam] Generating for Role: ${data.role}, Topics: ${topics.join(', ')}`);
+            sections = await generateExamPaper(data.role, topics, data.difficulty);
+
             if (!sections || sections.length === 0) {
                 throw new Error("No sections generated.");
             }
@@ -132,7 +148,7 @@ export async function assignExam(
         // Check if Exam is READY
         const { data: examData } = await supabaseAdmin
             .from('exams')
-            .select('status')
+            .select('status, title, duration_minutes')
             .eq('id', examId)
             .single();
 
@@ -157,11 +173,102 @@ export async function assignExam(
         // Update application status for these candidates
         for (const cid of candidateIds) {
             const { data: user } = await supabaseAdmin.auth.admin.getUserById(cid);
-            if (user && user.user) {
+            if (user && user.user && user.user.email) {
+                // 1. Update App Status
                 await supabaseAdmin
                     .from('applications')
                     .update({ status: 'EXAM_ASSIGNED' })
                     .eq('email', user.user.email);
+
+                // 2. Send Invite Email
+                const assignment = assignments.find(a => a.candidate_id === cid);
+                // Use assignment ID as the unique token for simplicity and reliability
+                // In a real scenario, we might use a separate hash.
+                // We point to a tracking URL: /api/invite?token=ASSIGNMENT_ID
+                const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL}/api/invite?token=${assignment?.exam_id}_${cid}`;
+                // Note: We need the specific assignment ID, but we just bulk inserted. 
+                // We should have returned data from insert. 
+
+                // Let's rely on fetching the specific assignment ID or just generic link for now to avoid complexity without refetching.
+                // BETTER: Fetch the specific assignment ID we just created.
+                const { data: specificAssignment } = await supabaseAdmin
+                    .from('exam_assignments')
+                    .select('id')
+                    .eq('exam_id', examId)
+                    .eq('candidate_id', cid)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .single();
+
+                if (specificAssignment) {
+                    const trackedLink = `${process.env.NEXT_PUBLIC_APP_URL}/api/invite?id=${specificAssignment.id}`;
+
+                    try {
+                        const { sendEmail } = await import("@/lib/email");
+                        await sendEmail({
+                            to: user.user.email,
+                            subject: "Skill Assessment Invite - RecruitAI",
+                            html: `
+                                <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px;">
+                                    <h2>Coding Assessment Invitation</h2>
+                                    <p>Hello,</p>
+                                    <p>You have been invited to take the <strong>${examData.title || 'Technical Assessment'}</strong>.</p>
+                                    
+                                    <div style="background: #f4f4f4; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                                        <p><strong>Duration:</strong> ${examData.duration_minutes || 60} minutes</p>
+                                        <p><strong>Start Time:</strong> ${scheduled_start_time ? new Date(scheduled_start_time).toLocaleString() : 'Any time'}</p>
+                                    </div>
+
+                                    <a href="${trackedLink}" style="background-color: #2563EB; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+                                        Start Assessment
+                                    </a>
+                                    
+                                    <p style="font-size: 12px; color: #666; margin-top: 20px;">
+                                        Note: This link is unique to you. Do not share it.
+                                    </p>
+                                </div>
+                            `
+                        });
+
+                        // Update tracking status
+                        await supabaseAdmin
+                            .from('exam_assignments')
+                            .update({ invite_status: 'sent', invite_sent_at: new Date().toISOString() })
+                            .eq('id', specificAssignment.id);
+
+                    } catch (emailErr) {
+                        console.error("Failed to send invite email:", emailErr);
+                    }
+
+                    // B. Send WhatsApp (If phone exists)
+                    try {
+                        const { data: profile } = await supabaseAdmin
+                            .from('candidate_profiles')
+                            .select('phone')
+                            .eq('user_id', cid)
+                            .single();
+
+                        const phone = profile?.phone || user.user.phone;
+
+                        // Only try sending if we have a phone number
+                        if (phone) {
+                            const { sendExamInvite } = await import("@/lib/whatsapp");
+                            const waRes = await sendExamInvite(
+                                phone,
+                                examData.title || "Technical Assessment",
+                                trackedLink
+                            );
+
+                            if (!waRes.success) {
+                                console.warn(`WhatsApp Invite Failed for ${cid}: ${waRes.error}`);
+                            } else {
+                                console.log(`WhatsApp Invite Sent to ${cid}`);
+                            }
+                        }
+                    } catch (waErr) {
+                        console.error("WhatsApp Dispatch Error:", waErr);
+                    }
+                }
             }
         }
 

@@ -467,3 +467,79 @@ export async function finalizeInterviewDecision(interviewId: string, decision: '
 
     return { success: true };
 }
+
+// ------------------------------------------------------------------
+// NEW: Strict Scheduling Validation
+// ------------------------------------------------------------------
+
+export async function validateInterviewAccess(interviewId: string) {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) return { error: "Unauthorized" };
+
+    const { data: interview } = await supabaseAdmin
+        .from('interviews')
+        .select('*')
+        .eq('id', interviewId)
+        .single();
+
+    if (!interview) return { error: "Interview not found" };
+    if (interview.candidate_id !== session.user.id && session.user.role !== 'ADMIN') {
+        return { error: "Access denied" };
+    }
+
+    if (interview.status === 'completed') {
+        return { error: "Interview already completed", status: 'completed' };
+    }
+
+    // TIME VALIDATION (UTC)
+    const now = new Date();
+    const scheduledAt = new Date(interview.scheduled_at);
+    // Allow join 15 mins before
+    const joinTime = new Date(scheduledAt.getTime() - 15 * 60 * 1000);
+    // End time = Scheduled + Duration + Buffer (e.g. 15 mins grace? or strict duration?)
+    // Let's assume strict end time based on duration for now, maybe small buffer.
+    const durationMins = interview.duration_minutes || 60;
+    const endTime = new Date(scheduledAt.getTime() + durationMins * 60 * 1000);
+
+    /* 
+       DEBUG LOGS (Remove in prod if noisy)
+       console.log(`[Validation] Now: ${now.toISOString()}`);
+       console.log(`[Validation] Join: ${joinTime.toISOString()}`);
+       console.log(`[Validation] End: ${endTime.toISOString()}`);
+    */
+
+    if (now < joinTime) {
+        return {
+            error: "Too early to join.",
+            status: 'future',
+            scheduledAt: scheduledAt.toISOString(),
+            joinTime: joinTime.toISOString()
+        };
+    }
+
+    if (now > endTime) {
+        return {
+            error: "Interview session has expired.",
+            status: 'expired'
+        };
+    }
+
+    return { success: true, status: 'active' };
+}
+
+export async function startInterviewSession(interviewId: string) {
+    // Re-use validation
+    const check = await validateInterviewAccess(interviewId);
+    if (check.error && check.status !== 'active') { // If active, we might just be re-joining
+        // If it's technically "active" (within time window) but they haven't "started" DB-wise, proceed.
+        if (check.status !== 'active') return check;
+    }
+
+    // Update status to 'in_progress' if not already
+    await supabaseAdmin
+        .from('interviews')
+        .update({ status: 'in_progress' }) // We don't change start time here, we use scheduled_at as reference
+        .eq('id', interviewId);
+
+    return { success: true };
+}

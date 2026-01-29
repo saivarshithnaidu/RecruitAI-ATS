@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { startExam, submitExam } from "@/app/actions/exams";
 import { useRouter } from "next/navigation";
 import CodingEditor from "./CodingEditor";
+import DualCameraSetup from "@/components/candidate/DualCameraSetup";
 
 export default function ExamInterface({ exam, initialStatus }: { exam: any, initialStatus: string }) {
     const router = useRouter();
@@ -32,10 +33,14 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
     const [fullscreenExits, setFullscreenExits] = useState(0);
     const [cameraVerified, setCameraVerified] = useState(false);
     const [micVerified, setMicVerified] = useState(false);
+    const [mobileVerified, setMobileVerified] = useState(false); // [DUAL CAM]
     const [stream, setStream] = useState<MediaStream | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const chunksRef = useRef<Blob[]>([]);
+
+    // --- PROCTORING CONFIG ---
+    const config = exam.proctoring_config || { camera: true, mic: true, tab_switch: true, copy_paste: true, dual_camera: false };
 
     // --- LOGGING HELPER ---
     const logEvent = useCallback(async (type: string, details: any = {}) => {
@@ -44,8 +49,8 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    exam_assignment_id: exam.id, // Using exam.id as assignment id
-                    candidate_id: null, // Ideally we assume session user, handled by backend or we pass it if available
+                    exam_assignment_id: exam.id,
+                    candidate_id: null,
                     event_type: type,
                     details
                 })
@@ -68,11 +73,6 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
             } else {
                 setTimeLeft(remaining);
                 fetchQuestions();
-                // If in progress, we might need to re-request camera if page reloaded
-                // For now, simpler flow: if reloaded, user must manually click "Resume with Camera" or similar.
-                // But in this logic, handleStart is only called from 'assigned' state.
-                // If user reloads page, they might lose the stream. 
-                // We should ideally try to restore stream here if missing.
                 if (!stream) {
                     performSystemCheck().then(s => {
                         if (s) {
@@ -82,7 +82,7 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
                 }
             }
         }
-    }, [status, exam.started_at]); // Remove stream dep to avoid loop
+    }, [status, exam.started_at]);
 
     // Attach stream to video element whenever stream changes
     useEffect(() => {
@@ -147,8 +147,6 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
         return () => clearInterval(timer);
     }, [status, timeLeft]);
 
-    // --- PROCTORING CONFIG ---
-    const config = exam.proctoring_config || { camera: true, mic: true, tab_switch: true, copy_paste: true };
 
     // --- SECURITY EVENTS ---
     useEffect(() => {
@@ -197,8 +195,18 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
                 });
             }
         };
-        if (config.tab_switch) { // Bundle fullscreen with tab switch or separate? User requested "Detect Tab Switch". Usually implicit.
+
+        // Initial Check & Listener
+        if (config.tab_switch) {
             document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+            if (!document.fullscreenElement) {
+                setTimeout(() => {
+                    if (!document.fullscreenElement) {
+                        setFullscreenExits(prev => prev === 0 ? 1 : prev + 1);
+                    }
+                }, 2000);
+            }
         }
 
         return () => {
@@ -234,16 +242,29 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
     };
 
     const handleStart = async () => {
-        if (!cameraVerified || !stream) return;
+        const needsCam = config.camera || config.mic;
+        const needsMobile = config.dual_camera;
+
+        if (needsCam && (!cameraVerified || !stream)) {
+            setError("Please complete the Laptop System Check.");
+            return;
+        }
+
+        if (needsMobile && !mobileVerified) {
+            setError("Please verify the Mobile 'Third Eye' connection.");
+            return;
+        }
+
         try {
             await document.documentElement.requestFullscreen();
         } catch (e) {
-            setError("Fullscreen mode is mandatory.");
+            console.error(e);
+            setError("Fullscreen mode is mandatory. Please confirm execution.");
             return;
         }
 
         setLoading(true);
-        startRecording(stream); // Start recording here
+        if (stream) startRecording(stream);
 
         try {
             const res = await startExam(exam.id);
@@ -285,21 +306,15 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
         if (submitting) return;
         setSubmitting(true);
 
-        // Stop Everything
         if (stream) stream.getTracks().forEach(t => t.stop());
         if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
 
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
             mediaRecorderRef.current.stop();
-            // Wait a tiny bit for final blob? 
-            // Better: use the recorder.onstop event, but for simplicity we rely on existing chunks + final push
         }
 
         try {
-            // Compile Blob
             const finalBlob = new Blob(chunksRef.current, { type: 'video/webm' });
-            // Upload in background (don't block submit overly long? risk of closing tab...)
-            // Ideally valid to block to ensure evidence is saved.
             await uploadRecording(finalBlob);
 
             const proctoringData = {
@@ -326,11 +341,13 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
 
     // --- RENDER ---
     if (status === 'assigned') {
+        const isDualCam = config.dual_camera;
+
         return (
             <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-                <div className="bg-white max-w-2xl w-full p-8 rounded-xl shadow-lg border text-center">
+                <div className="bg-white max-w-4xl w-full p-8 rounded-xl shadow-lg border text-center my-8">
                     <h1 className="text-3xl font-bold text-gray-800 mb-2">{exam.exams.title}</h1>
-                    <p className="text-gray-600 mb-8">{exam.exams.description}</p>
+                    <p className="text-gray-600 mb-8 max-w-2xl mx-auto">{exam.exams.description}</p>
 
                     <div className="bg-blue-50 text-blue-800 p-6 rounded-lg text-left mb-8 space-y-2">
                         <h3 className="font-bold border-b border-blue-200 pb-2 mb-2">Exam Rules</h3>
@@ -341,54 +358,65 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
                         )}
                         <li>Duration: <strong>{durationMins} mins</strong></li>
                         {config.tab_switch && <li><strong>Fullscreen & No Tab Switching:</strong> Violations are logged.</li>}
-                        {(config.camera || config.mic) && <li><strong>Camera & Mic:</strong> Must remain on.</li>}
-                        {!config.camera && !config.mic && <li><strong>Open Book Possible:</strong> But do not switch tabs if monitored.</li>}
+                        <li><strong>Camera Priority:</strong> {isDualCam ? "Dual Camera (Laptop + Mobile)" : "Laptop Camera Only"}</li>
                     </div>
 
-                    <div className="space-y-6">
-
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                        {/* 1. LAPTOP CHECK */}
                         {(config.camera || config.mic) && (
-                            <div className="flex flex-col items-center gap-4">
-                                {/* Camera Preview Box */}
-                                <div className="w-64 h-48 bg-black rounded-lg overflow-hidden relative border-4 border-gray-200 flex items-center justify-center">
+                            <div className="flex flex-col items-center gap-4 p-4 border rounded-lg bg-gray-50">
+                                <h4 className="font-bold text-gray-700">1. Laptop Camera Check</h4>
+                                <div className="w-64 h-48 bg-black rounded-lg overflow-hidden relative border-4 border-gray-200 flex items-center justify-center shadow-inner">
                                     {stream ? (
                                         <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover transform scale-x-[-1]" />
                                     ) : (
-                                        <span className="text-gray-500">Camera Preview</span>
+                                        <div className="text-gray-500 text-sm flex flex-col items-center">
+                                            <span>Camera Preview</span>
+                                        </div>
                                     )}
                                 </div>
 
                                 {!cameraVerified ? (
-                                    <button onClick={performSystemCheck} className="px-6 py-2 bg-gray-800 text-white rounded hover:bg-black transition">
-                                        Check System ({config.camera ? 'Camera' : ''}{config.camera && config.mic ? ' & ' : ''}{config.mic ? 'Mic' : ''})
+                                    <button onClick={performSystemCheck} className="px-6 py-2 bg-gray-800 text-white rounded hover:bg-black transition text-sm">
+                                        Activate Laptop Camera
                                     </button>
                                 ) : (
-                                    <div className="text-green-600 font-bold flex items-center gap-2">
+                                    <div className="text-green-600 font-bold flex items-center gap-2 text-sm">
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                                        System Verified
+                                        Laptop Verified
                                     </div>
                                 )}
                             </div>
                         )}
 
-                        {error && <div className="text-red-600 bg-red-50 p-3 rounded">{error}</div>}
+                        {/* 2. MOBILE CHECK (Dual Cam) */}
+                        {isDualCam && (
+                            <div className="flex flex-col items-center gap-4 p-4 border rounded-lg bg-gray-50">
+                                <h4 className="font-bold text-gray-700">2. Mobile "Third Eye" Check</h4>
+                                <DualCameraSetup
+                                    examId={exam.id}
+                                    userId="candidate"
+                                    onReady={(ready) => setMobileVerified(ready)}
+                                />
+                            </div>
+                        )}
+                    </div>
 
-                        {/* Schedule Lock */}
+                    {error && <div className="text-red-600 bg-red-50 p-3 rounded mb-6 max-w-xl mx-auto border border-red-200">{error}</div>}
+
+                    {/* Start Button */}
+                    <div className="max-w-md mx-auto">
                         {exam.scheduled_start_time && (() => {
                             const startTime = new Date(exam.scheduled_start_time).getTime();
                             const now = new Date().getTime();
                             const diff = startTime - now;
-                            // Allow 15 mins early
                             const canEnter = diff <= (15 * 60 * 1000);
 
                             if (!canEnter) {
                                 return (
-                                    <div className="bg-yellow-50 text-yellow-800 p-4 rounded text-center border border-yellow-200">
-                                        <p className="font-bold">Exam is scheduled for later.</p>
-                                        <p className="text-sm mt-1">You can enter 15 minutes before the start time.</p>
-                                        <p className="mt-2 font-mono text-lg font-bold">
-                                            {new Date(exam.scheduled_start_time).toLocaleString()}
-                                        </p>
+                                    <div className="bg-yellow-50 text-yellow-800 p-4 rounded text-center border border-yellow-200 mb-4">
+                                        <p className="font-bold">Exam Scheduled Later</p>
+                                        <p className="text-sm">Entry allowed 15 mins before.</p>
                                     </div>
                                 )
                             }
@@ -397,15 +425,23 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
 
                         <button
                             onClick={handleStart}
-                            disabled={((config.camera || config.mic) && !cameraVerified) || loading || (exam.scheduled_start_time && new Date(exam.scheduled_start_time).getTime() - new Date().getTime() > 15 * 60 * 1000)}
-                            className={`w-full py-4 text-lg font-bold rounded-lg text-white transition
-                                ${(((config.camera || config.mic) && !cameraVerified) || loading || (exam.scheduled_start_time && new Date(exam.scheduled_start_time).getTime() - new Date().getTime() > 15 * 60 * 1000))
-                                    ? 'bg-gray-300 cursor-not-allowed'
-                                    : 'bg-blue-600 hover:bg-blue-700 shadow-lg transform hover:-translate-y-1'}
+                            disabled={
+                                ((config.camera || config.mic) && !cameraVerified) ||
+                                (isDualCam && !mobileVerified) ||
+                                loading ||
+                                (exam.scheduled_start_time && new Date(exam.scheduled_start_time).getTime() - new Date().getTime() > 15 * 60 * 1000)
+                            }
+                            className={`w-full py-4 text-lg font-bold rounded-xl text-white transition shadow-lg flex items-center justify-center gap-2
+                                ${(((config.camera || config.mic) && !cameraVerified) || (isDualCam && !mobileVerified) || loading || (exam.scheduled_start_time && new Date(exam.scheduled_start_time).getTime() - new Date().getTime() > 15 * 60 * 1000))
+                                    ? 'bg-gray-300 cursor-not-allowed shadow-none'
+                                    : 'bg-green-600 hover:bg-green-700 transform hover:-translate-y-1'}
                             `}
                         >
                             {loading ? 'Starting...' : 'Start Exam'}
                         </button>
+                        <p className="text-xs text-gray-400 mt-2">
+                            Ensuring a fair exam environment.
+                        </p>
                     </div>
                 </div>
             </div>
