@@ -27,17 +27,24 @@ export async function POST(request: Request) {
         }
 
         // 1. FETCH APPLICATION FIRST (Strict Check)
+        // 1. FETCH APPLICATION (Relaxed Check)
         const { data: app, error: appError } = await supabaseAdmin
             .from('applications')
-            .select('id')
+            .select('id, status')
             .eq('user_id', userId)
-            .in('status', ['parse_failed', 'PARSE_FAILED', 'Parse Failed']) // Robust Check
             .single();
 
         if (appError || !app) {
-            console.warn(`[Reupload] No parse_failed application found for User: ${userId}`);
-            return NextResponse.json({ success: false, message: 'No re-uploadable application found' }, { status: 404 });
+            console.warn(`[Reupload] No application found for User: ${userId}`);
+            // If no app exists, we can't re-upload. They should use the main upload.
+            // But maybe we should just create one? 
+            // The Reupload component is for *existing* failed apps.
+            return NextResponse.json({ success: false, message: 'No application found to update' }, { status: 404 });
         }
+
+        console.log(`[Reupload] Found Application: ${app.id}, Status: ${app.status}`);
+        // Optional: Block if status is something finalized? 
+        // For now, allow re-upload to fix "stuck" states.
 
         appId = app.id;
         console.log(`[Reupload] Found Application: ${appId}`);

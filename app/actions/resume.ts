@@ -45,21 +45,53 @@ export async function uploadResume(formData: FormData) {
         .createSignedUrl(fileName, 3600 * 24 * 365);
 
     const buffer = Buffer.from(fileBuffer);
-    const parsedText = await import("@/lib/parser").then(m => m.parseResume(buffer, file.type))
+
+    let parsedText = "";
+    let parseStatus = "parsed"; // default success
+    let parseErrorReason = "";
+
+    try {
+        parsedText = await import("@/lib/parser").then(m => m.parseResume(buffer, file.type));
+        // Double check text length here too? Or trust parser?
+        if (!parsedText || parsedText.length < 50) {
+            // Should have thrown if OCR failed, but if it returned success with empty string
+            throw new Error("Parsed text too short even after OCR");
+        }
+    } catch (parseError: any) {
+        console.error("Resume Parsing Failed completely:", parseError);
+        parseStatus = "parse_failed";
+        parseErrorReason = parseError.message;
+        // We DO NOT rethrow here, so we can save the status to DB
+    }
 
     // Update candidate in DB
+    // We merge the new status. If they are re-uploading, we must overwrite any previous 'parse_failed'.
     const { error: upsertError } = await supabaseAdmin
         .from('applications')
         .upsert({
             email: session.user.email,
             full_name: session.user.name,
             resume_path: filePath,
-            resume_url: signedUrlData?.signedUrl || ''
+            resume_url: signedUrlData?.signedUrl || '',
+            status: parseStatus === 'parse_failed' ? 'parse_failed' : 'parsed', // Ensure we don't accidentally overwrite 'SHORTLISTED' etc? 
+            // WAIT - User said "Never set application.status = 'parse_failed' until BOTH fail".
+            // And "Update application.status = 'parsed'".
+            // If the user already has a status like 'SHORTLISTED', re-uploading shouldn't reset it to 'parsed' unless specifically desired.
+            // But usually re-upload means new application version.
+            // Let's stick to the request: "Update application.status = 'parsed'" if successful.
         }, { onConflict: 'email' })
 
     if (upsertError) {
         console.error("DB Upsert failed", upsertError)
         throw new Error("Failed to save candidate data")
+    }
+
+    if (parseStatus === 'parse_failed') {
+        // Stop here, don't trigger ATS
+        // Maybe send email?
+        console.log("Stopping flow due to parse failure");
+        revalidatePath("/dashboard/profile");
+        return { success: false, error: "Failed to parse resume content. Please ensure it is a valid PDF or DOCX." };
     }
 
     try {
