@@ -20,7 +20,7 @@ export async function withdrawApplication(applicationId: string) {
         // 1. Verify Ownership & Status
         const { data: app, error: fetchError } = await supabaseAdmin
             .from('applications')
-            .select('user_id, status')
+            .select('user_id, status, email')
             .eq('id', applicationId)
             .single();
 
@@ -28,7 +28,11 @@ export async function withdrawApplication(applicationId: string) {
             return { success: false, message: "Application not found" };
         }
 
-        if (app.user_id !== session.user.id) {
+        // Check ownership by ID OR Email
+        // @ts-ignore
+        const isOwner = app.user_id === session.user.id || (app.email && app.email === session.user.email);
+
+        if (!isOwner) {
             return { success: false, message: "Unauthorized: You can only withdraw your own applications" };
         }
 

@@ -10,10 +10,16 @@ export async function GET(req: NextRequest) {
 
     if (mode && token) {
         if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+            if (!challenge) {
+                return new NextResponse(null, { status: 400 });
+            }
             console.log('WEBHOOK_VERIFIED');
-            return new NextResponse(challenge, { status: 200 });
+            return new Response(challenge, {
+                status: 200,
+                headers: { 'Content-Type': 'text/plain' }
+            });
         } else {
-            return new NextResponse(null, { status: 403 });
+            return new Response('Forbidden', { status: 403, headers: { 'Content-Type': 'text/plain' } });
         }
     }
 

@@ -54,7 +54,8 @@ export default withAuth(
                 if (
                     pathname === "/" ||
                     pathname.startsWith("/auth") ||
-                    pathname.startsWith("/api/auth") // Should be excluded by matcher, but safe to add
+                    pathname.startsWith("/api/auth") ||
+                    pathname.startsWith("/api/webhooks")
                 ) {
                     return true;
                 }
@@ -76,6 +77,6 @@ export const config = {
          * - favicon.ico (favicon file)
          * - public (public folder)
          */
-        "/((?!api/auth|_next/static|_next/image|favicon.ico|public).*)",
+        "/((?!api/auth|api/webhooks|_next/static|_next/image|favicon.ico|public).*)",
     ]
 }
