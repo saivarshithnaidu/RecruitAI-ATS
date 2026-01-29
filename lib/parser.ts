@@ -44,8 +44,11 @@ export async function parseResume(buffer: Buffer, mimeType: string): Promise<str
             return text;
 
         } else if (mimeType.includes("wordprocessingml") || mimeType.includes("msword")) { // Handle both docx variants if simple check fails
+            console.log(`[ResumeParser] Processing DOC/DOCX file (Mime: ${mimeType})`);
             const result = await mammoth.extractRawText({ buffer });
-            return result.value.trim();
+            const text = result.value.trim();
+            console.log(`[ResumeParser] DOCX Parse Success. Length: ${text.length}`);
+            return text;
         }
     } catch (error: any) {
         console.error("Final Parse Error:", error);
