@@ -17,7 +17,7 @@ export async function generateAtsScore(applicationId: string) {
         // 1. Fetch Application
         const { data: app, error: appError } = await supabaseAdmin
             .from('applications')
-            .select('*, ocr_text') // Explicitly select ocr_text
+            .select('*')
             .eq('id', applicationId)
             .single()
 
@@ -30,43 +30,37 @@ export async function generateAtsScore(applicationId: string) {
             return { success: true, message: "Already scored", score: app.ats_score, status: app.status }
         }
 
-        let resumeText = app.ocr_text;
+        let resumeText = "";
 
-        // 3. Download Resume from Supabase Storage ONLY if ocr_text is missing
+        // 3. Download Resume from Supabase Storage
+        console.log("Downloading resume file for parsing...");
+        const storagePath = app.resume_url
+        if (!storagePath) throw new Error("Resume path missing")
+
+        const { data: fileData, error: downloadError } = await supabaseAdmin
+            .storage
+            .from('resumes')
+            .download(storagePath)
+
+        if (downloadError || !fileData) {
+            console.error("Resume download error:", downloadError)
+            throw new Error("Failed to download resume file")
+        }
+
+        // Convert Blob to Buffer for parsing
+        const arrayBuffer = await fileData.arrayBuffer()
+        const buffer = Buffer.from(arrayBuffer)
+
+        // Determine mime type (basic inference)
+        const mimeType = storagePath.endsWith('.docx')
+            ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            : 'application/pdf'
+
+        // 4. Extract Text
+        resumeText = await parseResume(buffer, mimeType)
+
         if (!resumeText || resumeText.length < 50) {
-            console.log("ocr_text missing from DB, falling back to file download & extraction");
-            // app.resume_url stores the storage path (e.g., applications/uid/file.pdf)
-            const storagePath = app.resume_url
-            if (!storagePath) throw new Error("Resume path missing")
-
-            const { data: fileData, error: downloadError } = await supabaseAdmin
-                .storage
-                .from('resumes')
-                .download(storagePath)
-
-            if (downloadError || !fileData) {
-                console.error("Resume download error:", downloadError)
-                throw new Error("Failed to download resume file")
-            }
-
-            // Convert Blob to Buffer for parsing
-            const arrayBuffer = await fileData.arrayBuffer()
-            const buffer = Buffer.from(arrayBuffer)
-
-            // Determine mime type (basic inference)
-            const mimeType = storagePath.endsWith('.docx')
-                ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-                : 'application/pdf'
-
-            // 4. Extract Text
-            // Use correct parser that enforces OCR for PDFs
-            resumeText = await parseResume(buffer, mimeType)
-
-            if (!resumeText || resumeText.length < 50) {
-                throw new Error("Extracted text is too short or empty")
-            }
-        } else {
-            console.log("Using cached ocr_text from DB");
+            throw new Error("Extracted text is too short or empty")
         }
 
         const targetRole = "General Software Engineer" // ideally from job/profile

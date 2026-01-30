@@ -49,30 +49,15 @@ export async function uploadResume(formData: FormData) {
 
     let parsedText = "";
     let parseStatus = "parsed";
-    let parseErrorReason = "";
 
     try {
         console.log("Starting resume parsing...");
         parsedText = await import("@/lib/parser").then(m => m.parseResume(buffer, file.type));
-
-        // Check for low quality (OCR text length < threshold)
-        if (!parsedText || parsedText.length < 300) {
-            console.warn(`Parsed text is too short (${parsedText?.length || 0}). Marking as low_quality_resume.`);
-            parseStatus = "low_quality_resume";
-            // We DO NOT throw here. We save what we have.
-        } else {
-            console.log("Parsing successful. Text length:", parsedText.length);
-        }
+        console.log("Parsing successful. Text length:", parsedText.length);
 
     } catch (parseError: any) {
         console.error("Resume Parsing Failed completely:", parseError);
         parseStatus = "parse_failed";
-        parseErrorReason = parseError.message;
-        // Check requirement: "If parsing fails but OCR text exists, retry parsing once."
-        // My parseResume logic enforces OCR. If it throws, it failed.
-        // If I want to implement a retry here, I could loop. But parseResume inside lib is the best place for that logic?
-        // Actually, parseResume already tries to extract.
-        // Let's stick to catching and marking failed.
     }
 
     // Update candidate in DB
@@ -83,15 +68,11 @@ export async function uploadResume(formData: FormData) {
             full_name: session.user.name,
             resume_path: filePath,
             resume_url: signedUrlData?.signedUrl || '',
-            // @ts-ignore - Ignoring TS error for new column until schema is valid
-            ocr_text: parsedText,
-            status: parseStatus === 'parse_failed' ? 'parse_failed' : (parseStatus === 'low_quality_resume' ? 'low_quality_resume' : 'parsed'),
+            status: parseStatus === 'parse_failed' ? 'parse_failed' : 'parsed',
         }, { onConflict: 'email' })
 
     if (upsertError) {
         console.error("DB Upsert failed", upsertError)
-        // If the error is about missing column 'ocr_text', we might want to fallback?
-        // But the user requested this feature.
         throw new Error("Failed to save candidate data: " + upsertError.message)
     }
 
@@ -101,24 +82,13 @@ export async function uploadResume(formData: FormData) {
         return { success: false, error: "Failed to parse resume content. Please ensure it is a valid DOC or DOCX file." };
     }
 
-    // Only trigger ATS if we have valid text? 
-    // "If OCR text length < threshold, mark as 'low_quality_resume' ... Ensure OCR completes before parsing starts." -> Done.
-    // Does 'low_quality_resume' trigger ATS? Probably not useful.
     if (parseStatus === 'parsed') {
         try {
             const { calculateATSScore } = await import("./ats")
-            // Pass the ID or let it fetch? calculateATSScore (legacy) took text.
-            // But we want to use the new flow.
-            // Requirement was: "3. Parse resume ONLY from extracted text (OCR output)" -> This refers to "parsing" = "structured data extraction" OR "ATS scoring"?
-            // Assuming the `calculateATSScore` (which uses `extractTextFromBuffer` currently) needs to be updated to use the DB text.
-            // or we pass the text we just parsed.
-            // For now, I'll pass the text BUT I should update `ats.ts` to respect DB text.
             await calculateATSScore(parsedText, session.user.email)
         } catch (e) {
             console.error("ATS Score trigger failed", e)
         }
-    } else {
-        console.log("Skipping ATS score for low quality resume");
     }
 
     revalidatePath("/dashboard/profile")
