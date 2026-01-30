@@ -649,9 +649,8 @@ export async function getActiveExamSessions() {
                 exams (title),
                 candidate_profiles (full_name, email)
             `)
-            .in('status', ['in_progress', 'assigned']) // Show assigned too? Maybe just in_progress for "Live"
-            .eq('status', 'in_progress')
-            .order('started_at', { ascending: false });
+            .in('status', ['in_progress', 'assigned'])
+            .order('started_at', { ascending: false, nullsFirst: false });
 
         if (error) throw error;
 
