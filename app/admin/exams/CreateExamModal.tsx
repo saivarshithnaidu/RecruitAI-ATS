@@ -15,7 +15,13 @@ export default function CreateExamModal({ isOpen, onClose }: { isOpen: boolean, 
         role: "Frontend Developer", // Default
         difficulty: "Medium",
         duration_minutes: 60,
-        pass_mark: 40
+        pass_mark: 40,
+        proctor_settings: {
+            require_laptop_camera: true,
+            require_audio: true,
+            require_mobile_camera: false,
+            strict_mode: true
+        }
     });
 
     if (!isOpen) return null;
@@ -173,6 +179,65 @@ export default function CreateExamModal({ isOpen, onClose }: { isOpen: boolean, 
                             </div>
                         </div>
 
+                        {/* Proctoring Settings */}
+                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mt-4">
+                            <h3 className="text-sm font-semibold text-gray-700 mb-3">Proctoring Configuration</h3>
+                            <div className="space-y-3">
+                                <label className="flex items-center space-x-3">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.proctor_settings.require_laptop_camera}
+                                        onChange={(e) => setFormData(p => ({
+                                            ...p,
+                                            proctor_settings: { ...p.proctor_settings, require_laptop_camera: e.target.checked }
+                                        }))}
+                                        className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                    />
+                                    <span className="text-sm text-gray-700">Require Laptop Camera</span>
+                                </label>
+
+                                <label className="flex items-center space-x-3">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.proctor_settings.require_audio}
+                                        onChange={(e) => setFormData(p => ({
+                                            ...p,
+                                            proctor_settings: { ...p.proctor_settings, require_audio: e.target.checked }
+                                        }))}
+                                        className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                    />
+                                    <span className="text-sm text-gray-700">Require Microphone</span>
+                                </label>
+
+                                <label className="flex items-center space-x-3">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.proctor_settings.require_mobile_camera}
+                                        onChange={(e) => setFormData(p => ({
+                                            ...p,
+                                            proctor_settings: { ...p.proctor_settings, require_mobile_camera: e.target.checked }
+                                        }))}
+                                        className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                    />
+                                    <span className="text-sm text-gray-700">Require Mobile Camera (360° View)</span>
+                                </label>
+
+                                <label className="flex items-center space-x-3">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.proctor_settings.strict_mode}
+                                        onChange={(e) => setFormData(p => ({
+                                            ...p,
+                                            proctor_settings: { ...p.proctor_settings, strict_mode: e.target.checked }
+                                        }))}
+                                        className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                    />
+                                    <span className="text-sm text-gray-700">Strict Mode (Fullscreen enforcement)</span>
+                                </label>
+                            </div>
+                        </div>
+
+
                         <div className="pt-4 flex justify-end space-x-3 border-t mt-4">
                             <button
                                 type="button"
@@ -198,7 +263,7 @@ export default function CreateExamModal({ isOpen, onClose }: { isOpen: boolean, 
                         {loading && <p className="text-xs text-center text-gray-500">AI is generating questions. This may take a minute.</p>}
                     </form>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }

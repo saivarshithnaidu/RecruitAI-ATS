@@ -176,12 +176,22 @@ export default async function ExamDetailsPage({ params }: { params: Promise<{ id
                                                 {a.score !== undefined ? a.score : '-'}
                                             </td>
                                             <td className="py-3 text-right">
-                                                <Link
-                                                    href={`/admin/proctoring/${a.id}`}
-                                                    className="text-xs bg-gray-900 text-white px-2 py-1 rounded hover:bg-black transition"
-                                                >
-                                                    Review
-                                                </Link>
+                                                {a.status === 'in_progress' || a.status === 'assigned' || a.admin_status === 'paused' ? (
+                                                    <Link
+                                                        href={`/admin/proctoring/${a.id}`}
+                                                        className="text-xs bg-red-600 text-white px-3 py-1.5 rounded font-bold hover:bg-red-700 transition flex items-center justify-center gap-1"
+                                                    >
+                                                        <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                                                        Live Monitor
+                                                    </Link>
+                                                ) : (
+                                                    <Link
+                                                        href={`/admin/proctoring/${a.id}`}
+                                                        className="text-xs bg-gray-900 text-white px-2 py-1 rounded hover:bg-black transition"
+                                                    >
+                                                        Review
+                                                    </Link>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}

@@ -44,10 +44,32 @@ export async function uploadResume(formData: FormData) {
         .from('resumes')
         .createSignedUrl(fileName, 3600 * 24 * 365);
 
+    // 2. Insert Application INITIAL STATE (Safest)
+    // We insert *before* parsing to ensure we have a record even if parsing crashes
+    // Use 'processing' or 'uploaded' status initially? Or 'APPLIED'?
+    // User wants "Mark status as parse_failed if parsing fails".
+
+    // Let's upsert as 'APPLIED' (or minimal status) first.
+    const { error: initialUpsertError } = await supabaseAdmin
+        .from('applications')
+        .upsert({
+            email: session.user.email,
+            full_name: session.user.name,
+            resume_path: filePath,
+            resume_url: signedUrlData?.signedUrl || '',
+            status: 'APPLIED',
+            ats_score: 0
+        }, { onConflict: 'email' });
+
+    if (initialUpsertError) {
+        console.error("Initial DB Upsert failed", initialUpsertError);
+        throw new Error("Failed to save application record");
+    }
+
     const buffer = Buffer.from(fileBuffer);
 
     let parsedText = "";
-    let parseStatus = "parsed"; // default success
+    let parseStatus = "parsed";
     let parseErrorReason = "";
 
     try {
@@ -64,26 +86,29 @@ export async function uploadResume(formData: FormData) {
         // We DO NOT rethrow here, so we can save the status to DB
     }
 
-    // Update candidate in DB
-    // We merge the new status. If they are re-uploading, we must overwrite any previous 'parse_failed'.
-    const { error: upsertError } = await supabaseAdmin
-        .from('applications')
-        .upsert({
-            email: session.user.email,
-            full_name: session.user.name,
-            resume_path: filePath,
-            resume_url: signedUrlData?.signedUrl || '',
-            status: parseStatus === 'parse_failed' ? 'parse_failed' : 'parsed', // Ensure we don't accidentally overwrite 'SHORTLISTED' etc? 
-            // WAIT - User said "Never set application.status = 'parse_failed' until BOTH fail".
-            // And "Update application.status = 'parsed'".
-            // If the user already has a status like 'SHORTLISTED', re-uploading shouldn't reset it to 'parsed' unless specifically desired.
-            // But usually re-upload means new application version.
-            // Let's stick to the request: "Update application.status = 'parsed'" if successful.
-        }, { onConflict: 'email' })
+    // 4. Update Application with Parse Result
+    // If failed, we update status to 'parse_failed'
+    // If success, we keep 'parsed' or 'APPLIED' (actually 'parsed' is good for internal tracking, or just 'APPLIED' + ats_score)
+    // User says "Mark status as parse_failed".
 
-    if (upsertError) {
-        console.error("DB Upsert failed", upsertError)
-        throw new Error("Failed to save candidate data")
+    const finalStatus = parseStatus === 'parse_failed' ? 'parse_failed' : 'APPLIED'; // Keep APPLIED if success, or 'parsed'?
+    // But we are in a server action potentially used for Re-upload.
+    // If Re-upload, we might want 'APPLIED' again?
+    // Let's stick to updating failure only, or updating parsed text if we had a column.
+
+    if (finalStatus === 'parse_failed') {
+        await supabaseAdmin
+            .from('applications')
+            .update({
+                status: 'parse_failed',
+                // meta: { parse_error: parseErrorReason } // if we had meta
+            })
+            .eq('email', session.user.email);
+
+        // DO NOT THROW. Return partial success.
+        console.log("Resume parsed failed, but file saved.");
+        revalidatePath("/dashboard/profile");
+        return { success: true, warning: "Resume uploaded, but auto-parsing failed. You may need to enter details manually." };
     }
 
     if (parseStatus === 'parse_failed') {

@@ -62,7 +62,7 @@ export default function InterviewLobbyClient({ interview }: { interview: any }) 
         setIsLoading(true);
         setError(null);
         try {
-            const result = await startInterviewSession(interview.id);
+            const result = await startInterviewSession(interview.id) as any;
             if (result.success) {
                 router.push(`/candidate/interview/${interview.id}/play`);
             } else {

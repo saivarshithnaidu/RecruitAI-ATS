@@ -55,7 +55,8 @@ export default function AssignExamModal({
         camera: false,
         mic: false,
         tab_switch: true,
-        copy_paste: true
+        copy_paste: true,
+        dual_camera: false
     });
 
     const handleAssign = async () => {
@@ -178,6 +179,15 @@ export default function AssignExamModal({
                                 className="rounded"
                             />
                             <span className="text-sm">Block Copy/Paste</span>
+                        </label>
+                        <label className="flex items-center space-x-2 col-span-2 bg-blue-50 p-2 rounded -mx-2">
+                            <input
+                                type="checkbox"
+                                checked={proctoring.dual_camera}
+                                onChange={(e) => setProctoring({ ...proctoring, dual_camera: e.target.checked })}
+                                className="rounded text-blue-600"
+                            />
+                            <span className="text-sm font-medium text-blue-800">Enable "Third Eye" (Dual Camera)</span>
                         </label>
                     </div>
                 </div>

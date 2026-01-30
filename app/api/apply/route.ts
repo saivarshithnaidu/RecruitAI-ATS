@@ -34,53 +34,67 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: false, message: 'Missing required fields' }, { status: 400 });
         }
 
+        // Validate MIME Type
+        const allowedTypes = [
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        ];
+        if (!allowedTypes.includes(resume.type)) {
+            return NextResponse.json({
+                success: false,
+                message: 'Invalid file type. Please upload a PDF or DOC/DOCX file.'
+            }, { status: 400 });
+        }
+
         // 1.5 Verify Email & Get Profile
-        let { data: profile, error: profileError } = await supabaseAdmin
-            .from('profiles')
-            .select('id, email_verified')
-            .eq('id', session.user.id)
-            .single();
+        // Strict Order: Auth User -> Profile -> Application
 
-        if (profileError && profileError.code !== 'PGRST116') {
-            // Real DB error, not just 'no rows returned'
-            console.error("Profile fetch error:", profileError);
-            return NextResponse.json({ success: false, message: 'Profile fetch error. Please contact support.' }, { status: 500 });
-        }
+        let profile = null;
 
-        if (!profile) {
-            // Auto-create profile as UNVERIFIED (Default state for new system)
-            // User requirement: Never block users with "Profile not found"
-
-            const { error: createError } = await supabaseAdmin
+        try {
+            // Attempt simple get first
+            const { data, error } = await supabaseAdmin
                 .from('profiles')
-                .upsert({
-                    id: session.user.id,
-                    user_id: session.user.id,
-                    email: session.user.email,
-                    full_name: fullName,
-                    mobile_number: phone,
-                    email_verified: false
-                }, { onConflict: 'id' });
+                .select('id, email_verified')
+                .eq('id', session.user.id)
+                .maybeSingle();
 
-            if (createError) {
-                console.error("Failed to auto-create/upsert profile:", JSON.stringify(createError));
-                return NextResponse.json({
-                    success: false,
-                    message: `Failed to initialize profile: ${createError.message}`
-                }, { status: 500 });
+            profile = data;
+
+            if (!profile) {
+                // Profile missing: Create it robustly
+                const { data: newProfile, error: createError } = await supabaseAdmin
+                    .from('profiles')
+                    .upsert({
+                        id: session.user.id,
+                        user_id: session.user.id,
+                        email: session.user.email,
+                        full_name: fullName,
+                        mobile_number: phone,
+                        email_verified: false
+                    }, { onConflict: 'id' })
+                    .select()
+                    .single();
+
+                if (createError) {
+                    console.error("Profile Upsert Failed:", createError);
+                    // Critical Error: Cannot create application without profile
+                    return NextResponse.json({
+                        success: false,
+                        message: `Failed to initialize candidate profile. Please contact support.`
+                    }, { status: 500 });
+                }
+                profile = newProfile;
             }
-
-            // Set ephemeral profile object to proceed
-            profile = { id: session.user.id, email_verified: false };
+        } catch (err: any) {
+            console.error("Profile Logic Exception:", err);
+            return NextResponse.json({ success: false, message: "System error during profile initialization." }, { status: 500 });
         }
 
-        // REMOVED: Blocking check for email_verified. 
-        // Candidate CAN submit application without verification.
-        // if (!profile.email_verified) ...
-
-        // 2. Upload to Supabase Storage
         if (!profile) throw new Error("Unexpected profile state");
 
+        // 2. Upload to Supabase Storage
         const timestamp = Date.now();
         // sanitize filename
         const safeFilename = resume.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
@@ -101,36 +115,25 @@ export async function POST(request: Request) {
             }, { status: 500 });
         }
 
-        // 3. Store File Path (Not Public URL) - for private bucket access
-        // const { data: { publicUrl } } = supabaseAdmin.storage.from('resumes').getPublicUrl(filePath);
+        // 3. Store File Path
         const resumePath = filePath;
-
-        // 4. Insert or Update 'applications' table
 
         // 4. Insert New Application (History Support)
 
         // Check for ACTIVE application
-        // User cannot have two active applications at once.
-        // Terminal states allow re-application: WITHDRAWN, REJECTED, EXAM_FAILED, DELETED.
-        // Active states: APPLIED, SCORED, SCORED_AI, SCORED_FALLBACK, SHORTLISTED, EXAM_ASSIGNED, INTERVIEW_SCHEDULED, PASSED_EXAM, etc.
+        const terminalStatuses = ['WITHDRAWN', 'REJECTED', 'EXAM_FAILED', 'DELETED', 'HIRED'];
 
-        const terminalStatuses = ['WITHDRAWN', 'REJECTED', 'EXAM_FAILED', 'DELETED', 'HIRED']; // HIRED usually shouldn't re-apply but technically terminal
-
-        const { data: activeApps, error: fetchError } = await supabaseAdmin
+        const { error: fetchError } = await supabaseAdmin
             .from('applications')
             .select('id, status')
             .eq('user_id', session.user.id)
-            .is('deleted_at', null) // Ignore soft-deleted
-            .not('status', 'in', `(${terminalStatuses.join(',')})`) // Supabase syntax for NOT IN
+            .is('deleted_at', null)
+            .not('status', 'in', `(${terminalStatuses.join(',')})`);
 
         if (fetchError) {
             console.error("Error checking active apps:", fetchError);
             return NextResponse.json({ success: false, message: "Database check failed" }, { status: 500 });
         }
-
-        // Note: Supabase .not with 'in' might be tricky in some client versions. 
-        // Safer to fetch latest app and check status in JS if logic is complex, but let's try strict filter.
-        // Actually, let's fetch ALL non-deleted apps and check JS side to be safe and clear.
 
         const { data: existingApps } = await supabaseAdmin
             .from('applications')
@@ -162,21 +165,17 @@ export async function POST(request: Request) {
                 resume_url: resumePath,
                 status: 'APPLIED',
                 ats_score: 0,
-                // defaults: withdrawn=false, deleted_by_admin=false, ats_score_locked=false
             });
 
-        let dbError = insertError;
-
-        if (dbError) {
-            console.error('Database Operation Error:', dbError);
+        if (insertError) {
+            console.error('Database Operation Error:', insertError);
             return NextResponse.json({
                 success: false,
-                message: `Database Error: ${dbError.message}`
+                message: `Database Error: ${insertError.message}`
             }, { status: 500 });
         }
 
         // 5. Update Profile with latest contact info
-        // User wants profile updated when application is submitted successfully.
         const { error: profileUpdateError } = await supabaseAdmin
             .from('profiles')
             .update({
@@ -187,7 +186,6 @@ export async function POST(request: Request) {
 
         if (profileUpdateError) {
             console.error("Failed to sync profile:", profileUpdateError);
-            // Non-blocking warning
         }
 
         return NextResponse.json({ success: true, message: 'Application submitted successfully' });

@@ -1,11 +1,12 @@
-"use client";
 
-import nextDynamic from 'next/dynamic';
 import { Suspense } from 'react';
+import ConnectContent from './ConnectContent';
 
-// Use dynamic import with ssr: false to prevent useSearchParams() from breaking production build during prerender
-const ConnectContent = nextDynamic(() => import("./ConnectContent"), { ssr: false });
-
+/*
+ * MOBILE CONNECT PAGE (SERVER COMPONENT)
+ * FORCE DYNAMIC to avoid Prerender errors with SearchParams (which are used in the client child)
+ * We treat this as the entry point.
+ */
 export const dynamic = 'force-dynamic';
 
 export default function MobileConnectPage() {

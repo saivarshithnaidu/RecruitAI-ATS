@@ -11,6 +11,9 @@ import ApplicationsList from '@/components/admin/ApplicationsList';
 import InterviewScheduler from '@/components/admin/InterviewScheduler';
 import InterviewsList from '@/components/admin/InterviewsList';
 import { getInteviewCandidates, getInterviews } from '@/app/actions/interview';
+import { getActiveExamSessions } from '@/app/actions/exams';
+
+// ... existing imports
 
 export default function AdminDashboardPage() {
     const { data: session, status } = useSession();
@@ -23,6 +26,7 @@ export default function AdminDashboardPage() {
     const [selectedCandidateForExam, setSelectedCandidateForExam] = useState<{ id: string, name: string } | null>(null);
     const [interviewCandidates, setInterviewCandidates] = useState<any[]>([]);
     const [interviewsList, setInterviewsList] = useState<any[]>([]);
+    const [activeSessions, setActiveSessions] = useState<any[]>([]);
 
     // Fetch Logic
     async function fetchApplications() {
@@ -32,7 +36,12 @@ export default function AdminDashboardPage() {
             if (json.success) setApplications(json.data);
             else setError(json.message);
 
+            // Fetch Active Exams
+            const sessionsRes = await getActiveExamSessions();
+            if (sessionsRes.success) setActiveSessions(sessionsRes.sessions || []);
+
             // Fetch Interview Data
+
             const cands = await getInteviewCandidates();
             setInterviewCandidates(cands);
 
@@ -102,6 +111,7 @@ export default function AdminDashboardPage() {
         { id: 'applications', label: 'Applications List' },
         { id: 'exams', label: 'Exam Management' },
         { id: 'interviews', label: 'Interviews' },
+        { id: 'monitor', label: 'Live Monitor 🔴' },
     ];
 
     return (
@@ -147,7 +157,46 @@ export default function AdminDashboardPage() {
 
                 {/* Content */}
                 <div className="animate-fade-in">
-                    {activeTab === 'overview' && <DashboardOverview applications={applications} />}
+                    {activeTab === 'overview' && (
+                        <div className="space-y-8">
+                            {/* Live Active Exams Card */}
+                            {activeSessions.length > 0 && (
+                                <div className="bg-white rounded-xl shadow border border-blue-200 overflow-hidden">
+                                    <div className="bg-blue-50 px-6 py-4 border-b border-blue-100 flex justify-between items-center">
+                                        <h3 className="font-bold text-blue-900 flex items-center gap-2">
+                                            <span className="relative flex h-3 w-3">
+                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                                            </span>
+                                            Live Exams In Progress ({activeSessions.length})
+                                        </h3>
+                                    </div>
+                                    <div className="divide-y divide-gray-100">
+                                        {activeSessions.map((session: any) => (
+                                            <div key={session.id} className="px-6 py-4 flex justify-between items-center hover:bg-gray-50">
+                                                <div>
+                                                    <div className="font-bold text-gray-900">{session.candidate_profiles?.full_name || 'Unknown Candidate'}</div>
+                                                    <div className="text-sm text-gray-500">{session.exams?.title}</div>
+                                                </div>
+                                                <div className="flex items-center gap-4">
+                                                    <div className="text-xs text-gray-400">Started {new Date(session.started_at).toLocaleTimeString()}</div>
+                                                    <a
+                                                        href={`/admin/proctoring/${session.id}`}
+                                                        className="px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-lg shadow hover:bg-red-700 transition flex items-center gap-2"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                                        Monitor
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <DashboardOverview applications={applications} />
+                        </div>
+                    )}
 
                     {activeTab === 'applications' && (
                         <ApplicationsList
@@ -189,6 +238,62 @@ export default function AdminDashboardPage() {
                                     <InterviewsList interviews={interviewsList} />
                                 </div>
                             </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'monitor' && (
+                        <div className="space-y-6">
+                            <div className="flex justify-between items-center">
+                                <h2 className="text-xl font-bold text-gray-900">Live Exam Monitoring center</h2>
+                                <button onClick={fetchApplications} className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                    Refresh
+                                </button>
+                            </div>
+
+                            {activeSessions.length === 0 ? (
+                                <div className="text-center py-20 bg-white rounded-xl border border-gray-200">
+                                    <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                    </div>
+                                    <h3 className="text-lg font-medium text-gray-900">No Exams In Progress</h3>
+                                    <p className="text-gray-500 max-w-sm mx-auto mt-1">There are no candidates currently taking an exam. When a candidate starts, they will appear here instantly.</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {activeSessions.map((session: any) => (
+                                        <div key={session.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition">
+                                            <div className="p-1 bg-gradient-to-r from-red-500 to-red-600"></div>
+                                            <div className="p-6">
+                                                <div className="flex justify-between items-start mb-4">
+                                                    <div>
+                                                        <h3 className="font-bold text-lg text-gray-900">{session.candidate_profiles?.full_name}</h3>
+                                                        <p className="text-sm text-gray-500">{session.candidate_profiles?.email}</p>
+                                                    </div>
+                                                    <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-bold rounded animate-pulse">LIVE</span>
+                                                </div>
+
+                                                <div className="space-y-3 mb-6">
+                                                    <div className="text-sm text-gray-600">
+                                                        <span className="font-medium text-gray-800">Exam:</span> {session.exams?.title}
+                                                    </div>
+                                                    <div className="text-sm text-gray-600">
+                                                        <span className="font-medium text-gray-800">Started:</span> {new Date(session.started_at).toLocaleTimeString()}
+                                                    </div>
+                                                </div>
+
+                                                <a
+                                                    href={`/admin/proctoring/${session.id}`}
+                                                    className="block w-full text-center py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition shadow flex items-center justify-center gap-2"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                                    Launch Monitor
+                                                </a>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

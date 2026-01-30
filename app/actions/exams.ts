@@ -630,3 +630,33 @@ export async function submitExam(assignmentId: string, answers: Record<string, s
     revalidatePath('/candidate/dashboard');
     return { success: true, score: totalScore, status: resultStatus };
 }
+
+export async function getActiveExamSessions() {
+    const session = await getServerSession(authOptions);
+    // @ts-ignore
+    if (!session || session.user?.role !== 'ADMIN') {
+        return { error: "Unauthorized" };
+    }
+
+    try {
+        const { data: assignments, error } = await supabaseAdmin
+            .from('exam_assignments')
+            .select(`
+                id,
+                status,
+                started_at,
+                candidate_id,
+                exams (title),
+                candidate_profiles (full_name, email)
+            `)
+            .in('status', ['in_progress', 'assigned']) // Show assigned too? Maybe just in_progress for "Live"
+            .eq('status', 'in_progress')
+            .order('started_at', { ascending: false });
+
+        if (error) throw error;
+
+        return { success: true, sessions: assignments };
+    } catch (e: any) {
+        return { error: e.message };
+    }
+}
