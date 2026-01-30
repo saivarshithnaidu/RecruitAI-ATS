@@ -1,59 +1,44 @@
-const pdf = require("pdf-parse");
 import mammoth from "mammoth";
-import fs from "fs";
-import os from "os";
-import path from "path";
-import { googleDriveOCR } from "./googleDriveOCR";
 
 export async function parseResume(buffer: Buffer, mimeType: string): Promise<string> {
     try {
-        if (mimeType === "application/pdf") {
-            let text = "";
-            let useOCR = false;
+        console.log(`[ResumeParser] Starting parse for type: ${mimeType}`);
 
-            // 1. Try pdf-parse
+        if (
+            mimeType.includes("wordprocessingml") ||
+            mimeType.includes("msword") ||
+            mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+            mimeType.includes("officedocument") // Catch-all for office docs
+        ) {
+            console.log("[ResumeParser] DOC/DOCX detected. Using Mammoth...");
             try {
-                const data = await pdf(buffer);
-                text = data.text.trim();
-                // Check for scanned PDF (empty or very short text)
-                if (text.length < 50) {
-                    console.log("PDF text too short (<50 chars), triggering OCR fallback...");
-                    useOCR = true;
+                const result = await mammoth.extractRawText({ buffer });
+                const text = result.value.trim();
+                console.log(`[ResumeParser] DOCX Extraction Success. Length: ${text.length}`);
+
+                if (text.length < 100) {
+                    console.warn(`[ResumeParser] Text is extremely short (${text.length} chars). Parsing might be incomplete.`);
+                    // The requirement said "mark parse_failed" if < threshold.
+                    // The caller (resume.ts) handles logic based on returned text length or specific return values inside parseResume?
+                    // Currently resume.ts checks: if (!parsedText || parsedText.length < 300) -> low_quality.
+                    // If I return simple text, it will fall into low_quality.
+                    // User said: "If text length < threshold (e.g. 100 chars): mark parse_failed".
+                    // So I should throw?
+                    // If I throw, resume.ts catches and marks 'parse_failed'.
+                    throw new Error(`Text too short (${text.length} chars). Extraction failed.`);
                 }
-            } catch (pdfError) {
-                console.warn("pdf-parse failed, triggering OCR fallback...", pdfError);
-                useOCR = true;
+                return text;
+            } catch (docError) {
+                console.error("[ResumeParser] Mammoth Parsing Failed:", docError);
+                throw new Error("DOCX Parsing Failed");
             }
-
-            // 2. Fallback to Google Drive OCR
-            if (useOCR) {
-                const tempFilePath = path.join(os.tmpdir(), `resume_${Date.now()}.pdf`);
-                try {
-                    await fs.promises.writeFile(tempFilePath, buffer);
-                    text = await googleDriveOCR(tempFilePath);
-                } catch (ocrError: any) {
-                    console.error("OCR Fallback Failed:", ocrError);
-                    throw new Error("Failed to parse PDF Resume (OCR failed)");
-                } finally {
-                    if (fs.existsSync(tempFilePath)) {
-                        await fs.promises.unlink(tempFilePath);
-                    }
-                }
-            }
-
-            return text;
-
-        } else if (mimeType.includes("wordprocessingml") || mimeType.includes("msword")) { // Handle both docx variants if simple check fails
-            console.log(`[ResumeParser] Processing DOC/DOCX file (Mime: ${mimeType})`);
-            const result = await mammoth.extractRawText({ buffer });
-            const text = result.value.trim();
-            console.log(`[ResumeParser] DOCX Parse Success. Length: ${text.length}`);
-            return text;
+        } else {
+            console.warn(`[ResumeParser] Unsupported Mime Type: ${mimeType}`);
+            throw new Error("Unsupported file type. Please upload a DOC or DOCX file.");
         }
+
     } catch (error: any) {
         console.error("Final Parse Error:", error);
-        // Rethrow so the action knows it failed
         throw error;
     }
-    return "";
 }

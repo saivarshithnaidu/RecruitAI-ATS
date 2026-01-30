@@ -122,3 +122,49 @@ export async function getAdminCandidateProfile(candidateId: string) {
         return { error: error.message || "An unexpected error occurred fetching profile." };
     }
 }
+// ... existing code ...
+
+export async function getExamCandidates(examId: string) {
+    try {
+        await checkAdmin();
+
+        const { data: assignments, error } = await supabaseAdmin
+            .from('exam_assignments')
+            .select(`
+                candidate_id,
+                status,
+                score,
+                started_at,
+                submitted_at,
+                users:candidate_id (
+                    email,
+                    user_metadata
+                )
+            `)
+            .eq('exam_id', examId);
+
+        if (error) throw error;
+
+        // Transform to cleaner format
+        const candidates = assignments.map((a: any) => ({
+            id: a.candidate_id,
+            // @ts-ignore
+            email: a.users?.email || "Unknown",
+            // @ts-ignore
+            full_name: a.users?.user_metadata?.full_name || "Candidate",
+            status: a.status,
+            violations: {
+                tab_switches: 0, // Initial state, will update via Realtime
+                fullscreen_exits: 0
+            },
+            is_live: false,
+            mobile_live: false
+        }));
+
+        return { success: true, candidates };
+
+    } catch (error: any) {
+        console.error("Fetch candidates error:", error);
+        return { error: error.message };
+    }
+}

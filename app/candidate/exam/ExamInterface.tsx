@@ -5,8 +5,10 @@ import { startExam, submitExam } from "@/app/actions/exams";
 import { useRouter } from "next/navigation";
 import CodingEditor from "./CodingEditor";
 import DualCameraSetup from "@/components/candidate/DualCameraSetup";
+import { supabaseClient } from "@/lib/supabaseClient";
+import * as faceapi from 'face-api.js';
 
-export default function ExamInterface({ exam, initialStatus }: { exam: any, initialStatus: string }) {
+export default function ExamInterface({ exam, initialStatus, userId }: { exam: any, initialStatus: string, userId: string }) {
     const router = useRouter();
     const [status, setStatus] = useState(initialStatus); // 'assigned', 'in_progress', 'completed'
 
@@ -16,7 +18,7 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
 
     // UI State
     const [activeSectionId, setActiveSectionId] = useState<string>("");
-    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0); // [NEW] Track current question
+    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [answers, setAnswers] = useState<Record<string, string>>({});
 
     // Timer
@@ -27,6 +29,7 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState("");
+    const [isPaused, setIsPaused] = useState(false); // Admin Pause
 
     // --- PROCTORING STATE ---
     const [tabSwitches, setTabSwitches] = useState(0);
@@ -39,11 +42,32 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const chunksRef = useRef<Blob[]>([]);
 
+    // Mobile Heartbeat State
+    const [lastHeartbeat, setLastHeartbeat] = useState<number>(Date.now());
+    const [isMobileLive, setIsMobileLive] = useState(true);
+
     // --- PROCTORING CONFIG ---
     const config = exam.proctoring_config || { camera: true, mic: true, tab_switch: true, copy_paste: true, dual_camera: false };
+    const isDualCam = config.dual_camera; // Helper
+
+    // --- BROADCAST HELPER ---
+    const broadcastEvent = useCallback(async (event: string, payload: any = {}) => {
+        const channel = supabaseClient.channel(`proctor-${exam.id}`);
+        await channel.send({
+            type: 'broadcast',
+            event: event,
+            payload: { userId, ...payload }
+        });
+    }, [exam.id, userId]);
 
     // --- LOGGING HELPER ---
     const logEvent = useCallback(async (type: string, details: any = {}) => {
+        // 1. Broadcast to Admin
+        if (type === 'TAB_SWITCH') broadcastEvent('violation', { type: 'tab_switch' });
+        if (type === 'FULLSCREEN_EXIT') broadcastEvent('violation', { type: 'fullscreen_exit' });
+        if (type === 'MOBILE_DISCONNECT') broadcastEvent('violation', { type: 'mobile_disconnect' });
+
+        // 2. Persist to DB
         try {
             await fetch('/api/proctor/log', {
                 method: 'POST',
@@ -58,7 +82,112 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
         } catch (e) {
             console.error("Failed to log event:", e);
         }
-    }, [exam.id]);
+    }, [exam.id, broadcastEvent]);
+
+    const uploadRecording = async (blob: Blob) => {
+        const formData = new FormData();
+        formData.append('video', blob, 'recording.webm');
+        formData.append('examId', exam.id);
+
+        try {
+            await fetch('/api/proctor/upload', {
+                method: 'POST',
+                body: formData
+            });
+        } catch (e) {
+            console.error("Upload failed", e);
+        }
+    };
+
+    const handleSubmit = useCallback(async (auto = false) => {
+        if (submitting) return;
+        setSubmitting(true);
+
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
+
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+            mediaRecorderRef.current.stop();
+        }
+
+        try {
+            const finalBlob = new Blob(chunksRef.current, { type: 'video/webm' });
+            await uploadRecording(finalBlob);
+
+            const proctoringData = {
+                tab_switches: tabSwitches,
+                fullscreen_exits: fullscreenExits + (auto ? 1 : 0),
+                auto_submitted: auto,
+                flagged: (tabSwitches > 2 || fullscreenExits > 0)
+            };
+
+            await submitExam(exam.id, answers, proctoringData);
+            router.refresh();
+        } catch (e: any) {
+            if (!auto) setError(e.message);
+        } finally {
+            setSubmitting(false);
+        }
+    }, [submitting, stream, tabSwitches, fullscreenExits, answers, exam.id, router]);
+
+    // --- REALTIME: ADMIN COMMANDS & MOBILE HEARTBEAT ---
+    useEffect(() => {
+        if (status !== 'in_progress') return;
+
+        const channel = supabaseClient.channel(`proctor-${exam.id}`);
+
+        channel
+            .on('broadcast', { event: 'admin-command' }, (payload: any) => {
+                const data = payload.payload;
+                if (data.userId === userId) {
+                    console.log("Admin Command Received:", data.command);
+                    if (data.command === 'pause') setIsPaused(true);
+                    if (data.command === 'resume') setIsPaused(false);
+                    if (data.command === 'terminate') {
+                        handleSubmit(true);
+                        alert("Your exam has been terminated by the administrator.");
+                    }
+                }
+            })
+            .on('broadcast', { event: 'mobile-heartbeat' }, (payload: any) => {
+                const data = payload.payload;
+                if (data.userId === userId) {
+                    setLastHeartbeat(Date.now());
+                    setIsMobileLive(true);
+                }
+            })
+            .on('broadcast', { event: 'mobile-disconnected' }, (payload: any) => {
+                const data = payload.payload;
+                if (data.userId === userId) {
+                    setIsMobileLive(false);
+                    logEvent('MOBILE_DISCONNECT');
+                }
+            })
+            .subscribe(async (status) => {
+                if (status === 'SUBSCRIBED') {
+                    // Initial Heartbeat
+                    await channel.track({ online_at: new Date().toISOString(), userId });
+                }
+            });
+
+        // Periodic Heartbeat (Every 5s) & Mobile Check
+        const interval = setInterval(() => {
+            // Send own heartbeat
+            broadcastEvent('heartbeat');
+
+            // Check Mobile
+            if (isDualCam && Date.now() - lastHeartbeat > 15000) {
+                if (isMobileLive) {
+                    setIsMobileLive(false);
+                }
+            }
+        }, 5000);
+
+        return () => {
+            clearInterval(interval);
+            supabaseClient.removeChannel(channel);
+        };
+    }, [status, exam.id, userId, handleSubmit, broadcastEvent, logEvent, isDualCam, lastHeartbeat, isMobileLive]);
 
     // --- INITIALIZATION ---
     useEffect(() => {
@@ -82,9 +211,47 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
                 }
             }
         }
-    }, [status, exam.started_at]);
+    }, [status, exam.started_at, durationMins, handleSubmit, stream]);
 
-    // Attach stream to video element whenever stream changes
+    // --- SNAPSHOTS (VISUAL PROCTORING) ---
+    useEffect(() => {
+        if (status !== 'in_progress' || !stream || !config.camera) return;
+
+        const interval = setInterval(async () => {
+            if (videoRef.current) {
+                const video = videoRef.current;
+                const canvas = document.createElement('canvas');
+                canvas.width = 640; // Resize for bandwidth
+                canvas.height = 360;
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.translate(canvas.width, 0);
+                    ctx.scale(-1, 1); // Mirror flip
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                    canvas.toBlob(async (blob) => {
+                        if (blob) {
+                            const formData = new FormData();
+                            formData.append('file', blob, 'snap.jpg');
+                            formData.append('examId', exam.id);
+                            formData.append('userId', userId);
+
+                            try {
+                                await fetch('/api/proctor/snapshot', { method: 'POST', body: formData });
+                                // Optional: Broadcast that a new snapshot is available if we want real-time push
+                            } catch (e) {
+                                console.error("Snapshot upload failed", e);
+                            }
+                        }
+                    }, 'image/jpeg', 0.5); // 50% quality jpeg
+                }
+            }
+        }, 15000); // Every 15 seconds
+
+        return () => clearInterval(interval);
+    }, [status, stream, config.camera, exam.id, userId]);
+
+    // Video Stream Handler
     useEffect(() => {
         if (videoRef.current && stream) {
             videoRef.current.srcObject = stream;
@@ -92,18 +259,17 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
     }, [stream, status]);
 
     const startRecording = (mediaStream: MediaStream) => {
+        // ... (Recording logic kept if needed, or we can rely solely on snapshots to save bandwidth)
+        // For now, keeping legacy recording logic but prioritising snapshots
         try {
             const recorder = new MediaRecorder(mediaStream, { mimeType: 'video/webm' });
             recorder.ondataavailable = (e) => {
-                if (e.data.size > 0) {
-                    chunksRef.current.push(e.data);
-                }
+                if (e.data.size > 0) chunksRef.current.push(e.data);
             };
-            recorder.start(1000); // 1 sec chunks
+            recorder.start(1000);
             mediaRecorderRef.current = recorder;
-            console.log("Recording started");
         } catch (e) {
-            console.error("Failed to start recorder:", e);
+            console.error("Warning: MediaRecorder failed (Safari?)", e);
         }
     };
 
@@ -126,6 +292,70 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
         }
     };
 
+    // --- FACE DETECTION STATE ---
+    const [faceApiLoaded, setFaceApiLoaded] = useState(false);
+    const [missingFaceCount, setMissingFaceCount] = useState(0);
+    const [multipleFaceCount, setMultipleFaceCount] = useState(0);
+
+    // Load Models
+    useEffect(() => {
+        const loadModels = async () => {
+            const MODEL_URL = '/models';
+            try {
+                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+                setFaceApiLoaded(true);
+                console.log("FaceAPI Models Loaded");
+            } catch (e) {
+                console.error("Failed to load FaceAPI models:", e);
+            }
+        };
+        if (config.camera) loadModels();
+    }, [config.camera]);
+
+    // Face Detection Loop
+    useEffect(() => {
+        if (status !== 'in_progress' || !stream || !faceApiLoaded || !videoRef.current) return;
+
+        const interval = setInterval(async () => {
+            if (videoRef.current && !videoRef.current.paused && !videoRef.current.ended) {
+                try {
+                    const detections = await faceapi.detectAllFaces(
+                        videoRef.current,
+                        new faceapi.TinyFaceDetectorOptions()
+                    );
+
+                    const count = detections.length;
+
+                    if (count === 0) {
+                        setMissingFaceCount(prev => {
+                            const newVal = prev + 1;
+                            if (newVal % 5 === 0) logEvent('FACE_MISSING', { duration_sec: newVal });
+                            return newVal;
+                        });
+                    } else {
+                        setMissingFaceCount(0); // Reset if face found
+                    }
+
+                    if (count > 1) {
+                        setMultipleFaceCount(prev => {
+                            const newVal = prev + 1;
+                            if (newVal % 3 === 0) logEvent('MULTIPLE_FACES', { count });
+                            return newVal;
+                        });
+                        // Optional: Alert user
+                    } else {
+                        setMultipleFaceCount(0);
+                    }
+
+                } catch (e) {
+                    console.error("Detection error:", e);
+                }
+            }
+        }, 2000); // Check every 2s to save CPU
+
+        return () => clearInterval(interval);
+    }, [status, stream, faceApiLoaded, logEvent]);
+
     // Reset question index when section changes
     useEffect(() => {
         setCurrentQuestionIndex(0);
@@ -145,7 +375,7 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
             });
         }, 1000);
         return () => clearInterval(timer);
-    }, [status, timeLeft]);
+    }, [status, timeLeft, handleSubmit]);
 
 
     // --- SECURITY EVENTS ---
@@ -176,8 +406,15 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
         // 3. Tab Visibility
         const handleVisibilityChange = () => {
             if (document.hidden) {
-                setTabSwitches(prev => prev + 1);
-                logEvent('TAB_SWITCH');
+                setTabSwitches(prev => {
+                    const newVal = prev + 1;
+                    logEvent('TAB_SWITCH');
+                    if (newVal >= 3) {
+                        alert("Violation Limit Reached: Tab switching is strictly prohibited. Your exam is being auto-submitted.");
+                        handleSubmit(true);
+                    }
+                    return newVal;
+                });
             }
         };
         if (config.tab_switch) {
@@ -221,7 +458,7 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
                 document.removeEventListener('fullscreenchange', handleFullscreenChange);
             }
         };
-    }, [status, logEvent, config]);
+    }, [status, logEvent, config, handleSubmit]);
 
 
     // --- ACTIONS ---
@@ -287,59 +524,31 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
         }
     };
 
-    const uploadRecording = async (blob: Blob) => {
-        const formData = new FormData();
-        formData.append('video', blob, 'recording.webm');
-        formData.append('examId', exam.id);
-
-        try {
-            await fetch('/api/proctor/upload', {
-                method: 'POST',
-                body: formData
-            });
-        } catch (e) {
-            console.error("Upload failed", e);
-        }
-    };
-
-    const handleSubmit = useCallback(async (auto = false) => {
-        if (submitting) return;
-        setSubmitting(true);
-
-        if (stream) stream.getTracks().forEach(t => t.stop());
-        if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
-
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-            mediaRecorderRef.current.stop();
-        }
-
-        try {
-            const finalBlob = new Blob(chunksRef.current, { type: 'video/webm' });
-            await uploadRecording(finalBlob);
-
-            const proctoringData = {
-                tab_switches: tabSwitches,
-                fullscreen_exits: fullscreenExits + (auto ? 1 : 0),
-                auto_submitted: auto,
-                flagged: (tabSwitches > 2 || fullscreenExits > 0)
-            };
-
-            await submitExam(exam.id, answers, proctoringData);
-            router.refresh();
-        } catch (e: any) {
-            if (!auto) setError(e.message);
-        } finally {
-            setSubmitting(false);
-        }
-    }, [submitting, stream, tabSwitches, fullscreenExits, answers, exam.id, router]);
-
     const formatTime = (s: number) => {
         const m = Math.floor(s / 60);
         const sec = s % 60;
         return `${m}:${sec < 10 ? '0' : ''}${sec}`;
     };
 
-    // --- RENDER ---
+    // --- PAUSED OVERLAY ---
+    if (isPaused) {
+        return (
+            <div className="fixed inset-0 bg-black/95 z-[200] flex flex-col items-center justify-center text-white text-center p-8 backdrop-blur-md">
+                <div className="bg-gray-900 p-10 rounded-2xl border border-orange-500 shadow-2xl max-w-md w-full animate-pulse">
+                    <div className="w-20 h-20 bg-orange-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg className="w-8 h-8 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                    <h2 className="text-2xl font-bold text-orange-500 mb-4">Exam Paused by Admin</h2>
+                    <p className="text-gray-300">
+                        The administrator has paused your exam session.
+                        <br />
+                        Please wait for instructions or resumed access.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
     if (status === 'assigned') {
         const isDualCam = config.dual_camera;
 
@@ -395,8 +604,11 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
                                 <h4 className="font-bold text-gray-700">2. Mobile "Third Eye" Check</h4>
                                 <DualCameraSetup
                                     examId={exam.id}
-                                    userId="candidate"
-                                    onReady={(ready) => setMobileVerified(ready)}
+                                    userId={userId}
+                                    onReady={(ready) => {
+                                        setMobileVerified(ready);
+                                        if (ready) setLastHeartbeat(Date.now()); // Reset heartbeat on check success
+                                    }}
                                 />
                             </div>
                         )}
@@ -453,6 +665,31 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
         const displayQuestions = activeSection ? activeSection.questions : legacyQuestions;
         const currentQuestion = displayQuestions[currentQuestionIndex];
 
+        // --- BLOCKING OVERLAY: MOBILE LOST ---
+        if (config.dual_camera && !isMobileLive) {
+            return (
+                <div className="fixed inset-0 bg-black/95 z-[200] flex flex-col items-center justify-center text-white text-center p-8 backdrop-blur-md">
+                    <div className="bg-gray-900 p-10 rounded-2xl border border-red-500 shadow-2xl max-w-md w-full animate-shake">
+                        <div className="w-20 h-20 bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        </div>
+                        <h2 className="text-2xl font-bold text-red-500 mb-2">Third-Eye Disconnected</h2>
+                        <p className="text-gray-300 mb-8 leading-relaxed">
+                            We lost connection to your mobile camera. The exam is paused.
+                            <br /><br />
+                            <span className="text-sm bg-gray-800 p-2 rounded block">
+                                Please <strong>wake up your phone</strong> or refresh the mobile page.
+                            </span>
+                        </p>
+
+                        <div className="p-4 bg-black/30 rounded-lg text-sm text-gray-400">
+                            Waiting for signal...
+                        </div>
+                    </div>
+                </div>
+            )
+        }
+
         return (
             <div className="min-h-screen bg-gray-100 flex flex-col">
                 {/* Top Bar */}
@@ -469,6 +706,12 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
                             {tabSwitches > 0 && <span className="text-orange-600 font-semibold">⚠ Tabs: {tabSwitches}</span>}
                             {fullscreenExits > 0 && <span className="text-red-600 font-semibold">⚠ Fullscreen: {fullscreenExits}</span>}
                         </div>
+                        {config.dual_camera && (
+                            <div className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded border border-green-200">
+                                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                                Third-Eye Active
+                            </div>
+                        )}
                     </div>
                     <div className={`px-4 py-2 font-mono text-xl font-bold rounded ${timeLeft < 300 ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-gray-100 text-gray-800'}`}>
                         {formatTime(timeLeft)}

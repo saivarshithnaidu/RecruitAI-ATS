@@ -102,9 +102,18 @@ export default async function CandidateExamPage() {
         );
     }
 
+    // Get session for user ID (needed for proctoring)
+    const { getServerSession } = await import("next-auth");
+    const { authOptions } = await import("@/lib/auth");
+    const session = await getServerSession(authOptions);
+
     return (
         <div className="min-h-screen bg-gray-50 py-8">
-            <ExamInterface exam={exam} initialStatus={exam.status} />
+            <ExamInterface
+                exam={exam}
+                initialStatus={exam.status}
+                userId={session?.user?.id || ""}
+            />
         </div>
     );
 }

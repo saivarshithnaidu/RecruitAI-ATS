@@ -15,6 +15,13 @@ export type ExamInput = {
     pass_mark: number;
     title: string;
     description: string;
+    proctoring_config: {
+        camera: boolean;
+        mic: boolean;
+        dual_camera: boolean;
+        tab_switch: boolean;
+        copy_paste: boolean;
+    };
 }
 
 export async function createExam(data: ExamInput) {
@@ -116,7 +123,9 @@ export async function createExam(data: ExamInput) {
                 pass_mark: data.pass_mark,
                 created_by: creatorId,
                 status: 'DRAFT',
-                questions_data: sections
+                questions_data: sections,
+                proctoring_config: data.proctoring_config || { camera: true, mic: true, tab_switch: true, copy_paste: true, dual_camera: false },
+                exam_engine_version: 'v2' // Always v2 now
             })
             .select()
             .single();
@@ -513,7 +522,7 @@ export async function submitExam(assignmentId: string, answers: Record<string, s
             section.questions.forEach((q: any) => {
                 if (q.type === 'mcq') {
                     const userAnswer = answers[q.id];
-                    if (userAnswer && userAnswer.trim() === q.correct_answer.trim()) {
+                    if (userAnswer && String(userAnswer).trim() === String(q.correct_answer).trim()) {
                         totalScore += (q.marks || 1);
                     }
                 }

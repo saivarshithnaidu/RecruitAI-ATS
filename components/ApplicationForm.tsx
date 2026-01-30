@@ -100,12 +100,12 @@ export default function ApplicationForm() {
                 </div>
 
                 <div>
-                    <label htmlFor="resume" className="block text-sm font-medium text-gray-700">Resume (PDF, DOC)</label>
+                    <label htmlFor="resume" className="block text-sm font-medium text-gray-700">Resume (DOC, DOCX only)</label>
                     <input
                         id="resume"
                         name="resume"
                         type="file"
-                        accept=".pdf,.doc,.docx"
+                        accept=".doc,.docx"
                         required
                         className="mt-1 block w-full text-sm text-gray-500
               file:mr-4 file:py-2 file:px-4

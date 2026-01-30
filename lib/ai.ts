@@ -1,46 +1,27 @@
 import OpenAI from "openai";
-import mammoth from 'mammoth';
+// import mammoth from 'mammoth'; // Moved to parser.ts
 
 // Initialize OpenAI client with strict API Key validation
 const apiKey = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY;
 
 if (!apiKey) {
-    throw new Error("AI configuration error: OPENROUTER_API_KEY is missing. Please set it in .env.local");
+  throw new Error("AI configuration error: OPENROUTER_API_KEY is missing. Please set it in .env.local");
 }
 
 export const openai = new OpenAI({
-    apiKey: apiKey,
-    baseURL: "https://openrouter.ai/api/v1",
+  apiKey: apiKey,
+  baseURL: "https://openrouter.ai/api/v1",
 });
 
 const MODELS = [
-    "deepseek/deepseek-chat",
-    "mistralai/mistral-7b-instruct-v0.2",
-    "qwen/qwen-2.5-7b-instruct:free"
+  "deepseek/deepseek-chat",
+  "mistralai/mistral-7b-instruct-v0.2",
+  "qwen/qwen-2.5-7b-instruct:free"
 ];
 
 
-export async function extractTextFromBuffer(buffer: Buffer, mimeType: string): Promise<string> {
-    try {
-        if (mimeType === 'application/pdf') {
-            // @ts-ignore
-            const pdfParse = await import('pdf-parse');
-            // @ts-ignore
-            const data = await pdfParse.default(buffer);
-            return data.text;
-        } else if (
-            mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-            mimeType === 'application/msword'
-        ) {
-            const result = await mammoth.extractRawText({ buffer: buffer });
-            return result.value;
-        }
-        return '';
-    } catch (error) {
-        console.error("Text Extraction Error:", error);
-        throw new Error("Failed to extract text from resume");
-    }
-}
+// Text extraction moved to lib/parser.ts
+// export async function extractTextFromBuffer(buffer: Buffer, mimeType: string): Promise<string> { ... }
 
 // ... Unchanged ATS/Interview functions would go here if they existed in this file, 
 // but based on previous read, this file mostly contained the AI logic which we are replacing.
@@ -68,41 +49,41 @@ export async function extractTextFromBuffer(buffer: Buffer, mimeType: string): P
 // So I will proceed with replacing the AI part. I'll keep the `extractTextFromBuffer` and replace the rest.
 
 async function generateWithOpenRouter(prompt: string): Promise<any> {
-    for (const model of MODELS) {
-        try {
-            console.log(`[AI] Attempting generation with model: ${model}`);
-            const completion = await openai.chat.completions.create({
-                model: model,
-                messages: [
-                    { role: "system", content: "You are a helpful JSON API." },
-                    { role: "user", content: prompt }
-                ],
-                response_format: { type: "json_object" },
-                max_tokens: 4096
-            });
+  for (const model of MODELS) {
+    try {
+      console.log(`[AI] Attempting generation with model: ${model}`);
+      const completion = await openai.chat.completions.create({
+        model: model,
+        messages: [
+          { role: "system", content: "You are a helpful JSON API." },
+          { role: "user", content: prompt }
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 4096
+      });
 
-            const content = completion.choices[0].message.content;
-            if (!content) throw new Error("Empty response from AI provider");
+      const content = completion.choices[0].message.content;
+      if (!content) throw new Error("Empty response from AI provider");
 
-            try {
-                const parsed = JSON.parse(content);
-                console.log(`[AI] Success with model: ${model}`);
-                return parsed;
-            } catch (parseError) {
-                console.warn(`[AI] JSON Parse Error for ${model}:`, content.substring(0, 100) + "...");
-                throw new Error("Invalid JSON received");
-            }
+      try {
+        const parsed = JSON.parse(content);
+        console.log(`[AI] Success with model: ${model}`);
+        return parsed;
+      } catch (parseError) {
+        console.warn(`[AI] JSON Parse Error for ${model}:`, content.substring(0, 100) + "...");
+        throw new Error("Invalid JSON received");
+      }
 
-        } catch (error: any) {
-            console.warn(`[AI] Model ${model} failed:`, error.message || error);
-            // Continue to next model
-        }
+    } catch (error: any) {
+      console.warn(`[AI] Model ${model} failed:`, error.message || error);
+      // Continue to next model
     }
-    throw new Error(`All AI models failed. Please try again later or check API credits.`);
+  }
+  throw new Error(`All AI models failed. Please try again later or check API credits.`);
 }
 
 export async function generateExamPaper(role: string, skills: string[], difficulty: string): Promise<any> {
-    const prompt = `You are a strict technical examiner. Generate a complete 4-section exam for:
+  const prompt = `You are a strict technical examiner. Generate a complete 4-section exam for:
 Role: ${role}
 Skills: ${skills.join(', ')}
 Difficulty: ${difficulty}
@@ -139,9 +120,10 @@ RETURN JSON ONLY with this exact schema:
           "id": 1,
           "question": "Question text",
           "type": "mcq",
-          "options": ["A", "B", "C", "D"],
-          "correct_answer": "Option string",
-          "marks": 2
+          "options": ["Option A", "Option B", "Option C", "Option D"],
+          "correct_answer": "Option A",
+          "marks": 2,
+          "notes": "correct_answer MUST match one of the options options EXACTLY (case-sensitive)."
         }
         ... (10 questions)
       ]
@@ -183,25 +165,25 @@ RETURN JSON ONLY with this exact schema:
   ]
 }`;
 
-    try {
-        const result = await generateWithOpenRouter(prompt);
-        // Validate structure briefly
-        if (!result.sections || result.sections.length < 4) {
-            console.warn("AI generated incomplete sections (expected 4), retrying or fallback logic needed.");
-            // For now, return what we have, or throw.
-            if (!result.sections) throw new Error("Invalid structure");
-        }
-        return result.sections;
-    } catch (error) {
-        console.error("Exam Generation Final Failure:", error);
-        throw error;
+  try {
+    const result = await generateWithOpenRouter(prompt);
+    // Validate structure briefly
+    if (!result.sections || result.sections.length < 4) {
+      console.warn("AI generated incomplete sections (expected 4), retrying or fallback logic needed.");
+      // For now, return what we have, or throw.
+      if (!result.sections) throw new Error("Invalid structure");
     }
+    return result.sections;
+  } catch (error) {
+    console.error("Exam Generation Final Failure:", error);
+    throw error;
+  }
 }
 
 // Phase 3: AI Interviewer
 
 export async function generateInterviewQuestions(role: string, skills: string[]): Promise<any[]> {
-    const prompt = `You are a strict technical interviewer.
+  const prompt = `You are a strict technical interviewer.
 Generate 5 interview questions for:
 Role: ${role}
 Skills: ${skills.join(', ')}
@@ -219,25 +201,25 @@ Return JSON ONLY with this schema:
   ]
 }`;
 
-    try {
-        const result = await generateWithOpenRouter(prompt);
-        return result.questions || [];
-    } catch (error) {
-        console.error("Interview Question Generation Failed:", error);
-        return [
-            { question: "Describe your experience with the tech stack mentioned in your resume.", type: "behavioral", expected_keywords: ["experience", "projects"] },
-            { question: "How do you handle debugging complex issues?", type: "technical", expected_keywords: ["debugging", "tools", "process"] },
-            { question: "Explain a challenging project you worked on recently.", type: "behavioral", expected_keywords: ["challenge", "solution"] },
-            { question: "What are your strengths and weaknesses?", type: "behavioral", expected_keywords: ["strengths", "weaknesses"] },
-            { question: "Why do you want to join this company?", type: "behavioral", expected_keywords: ["motivation", "culture"] }
-        ];
-    }
+  try {
+    const result = await generateWithOpenRouter(prompt);
+    return result.questions || [];
+  } catch (error) {
+    console.error("Interview Question Generation Failed:", error);
+    return [
+      { question: "Describe your experience with the tech stack mentioned in your resume.", type: "behavioral", expected_keywords: ["experience", "projects"] },
+      { question: "How do you handle debugging complex issues?", type: "technical", expected_keywords: ["debugging", "tools", "process"] },
+      { question: "Explain a challenging project you worked on recently.", type: "behavioral", expected_keywords: ["challenge", "solution"] },
+      { question: "What are your strengths and weaknesses?", type: "behavioral", expected_keywords: ["strengths", "weaknesses"] },
+      { question: "Why do you want to join this company?", type: "behavioral", expected_keywords: ["motivation", "culture"] }
+    ];
+  }
 }
 
 export async function evaluateInterviewResponses(questions: string[], answers: string[]): Promise<{ score: number, result: string }> {
-    const qaPairs = questions.map((q, i) => `Q: ${q}\nA: ${answers[i] || "No answer"}`).join('\n\n');
+  const qaPairs = questions.map((q, i) => `Q: ${q}\nA: ${answers[i] || "No answer"}`).join('\n\n');
 
-    const prompt = `You are a technical hiring manager. Evaluate the following interview candidate.
+  const prompt = `You are a technical hiring manager. Evaluate the following interview candidate.
     
 ${qaPairs}
 
@@ -251,15 +233,15 @@ Return JSON ONLY:
   "reason": "short summary"
 }`;
 
-    try {
-        const result = await generateWithOpenRouter(prompt);
-        return {
-            score: result.score || 0,
-            result: result.result || 'FAILED'
-        };
-    } catch (error) {
-        console.error("Interview Evaluation Failed:", error);
-        return { score: 0, result: 'PENDING' }; // Manual review fallback
-    }
+  try {
+    const result = await generateWithOpenRouter(prompt);
+    return {
+      score: result.score || 0,
+      result: result.result || 'FAILED'
+    };
+  } catch (error) {
+    console.error("Interview Evaluation Failed:", error);
+    return { score: 0, result: 'PENDING' }; // Manual review fallback
+  }
 }
 

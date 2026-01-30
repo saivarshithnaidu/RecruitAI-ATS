@@ -1,186 +1,63 @@
-"use client";
+import { verifyMobileToken } from "@/lib/proctor-token";
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import { AlertTriangle, CheckCircle } from "lucide-react";
 
-import { useEffect, useState, useRef } from "react";
-import { useSearchParams } from "next/navigation";
-import { supabaseClient } from "@/lib/supabaseClient";
-import { WebRTCSignaling } from "@/lib/webrtc-signaling";
+export default function MobileConnectPage({ searchParams }: { searchParams: { token: string } }) {
+    if (!searchParams.token) {
+        return <ErrorState message="No token provided." />;
+    }
 
-export default function MobileConnectPage() {
-    const searchParams = useSearchParams();
-    const token = searchParams.get('token');
+    try {
+        const payload = verifyMobileToken(searchParams.token);
+        if (!payload) throw new Error("Invalid token");
 
-    // Status
-    const [status, setStatus] = useState<'validating' | 'ready' | 'connected' | 'error'>('validating');
-    const [stream, setStream] = useState<MediaStream | null>(null);
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const peerRef = useRef<RTCPeerConnection | null>(null);
-    const signalingRef = useRef<WebRTCSignaling | null>(null);
-    const supabase = supabaseClient;
+        // Token is valid, show start button
+        return (
+            <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-6 text-center">
+                <div className="bg-gray-800 p-8 rounded-2xl border border-gray-700 shadow-2xl max-w-sm w-full">
+                    <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <CheckCircle className="w-8 h-8 text-green-500" />
+                    </div>
 
-    const [debugInfo, setDebugInfo] = useState<string>("");
+                    <h1 className="text-2xl font-bold mb-2">Connected!</h1>
+                    <p className="text-gray-400 mb-8 text-sm">
+                        You are ready to start the Third-Eye camera session for your desktop exam.
+                    </p>
 
-    useEffect(() => {
-        if (!token) {
-            setStatus('error');
-            setDebugInfo("No token provided");
-            return;
-        }
+                    <div className="bg-blue-900/30 p-4 rounded-lg text-left mb-8 border border-blue-500/30">
+                        <h3 className="text-blue-400 font-bold text-xs uppercase tracking-wider mb-2">Instructions</h3>
+                        <ul className="text-sm text-gray-300 space-y-2 list-disc pl-4">
+                            <li>Place phone behind or to the side of you.</li>
+                            <li>Ensure it sees your screen and you.</li>
+                            <li>Keep this tab open. Do not lock phone.</li>
+                        </ul>
+                    </div>
 
-        // Validate Token with Backend
-        validateToken(token);
+                    <Link
+                        href={`/third-eye/session/${searchParams.token}`}
+                        className="block w-full py-4 bg-green-600 rounded-xl font-bold hover:bg-green-700 transition active:scale-95"
+                    >
+                        Start Camera
+                    </Link>
+                </div>
+                <p className="mt-8 text-xs text-gray-500">RecruitAI Proctoring System v2.0</p>
+            </div>
+        );
 
-        return () => {
-            if (stream) stream.getTracks().forEach(t => t.stop());
-            if (peerRef.current) peerRef.current.close();
-            if (signalingRef.current) signalingRef.current.channel.unsubscribe();
-        }
-    }, [token]);
+    } catch (e) {
+        return <ErrorState message="Token expired or invalid. Please refresh the QR code on your desktop." />;
+    }
+}
 
-    const validateToken = async (t: string) => {
-        try {
-            const res = await fetch('/api/proctor/mobile-auth', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: t })
-            });
-            const data = await res.json();
-
-            if (res.ok && data.success) {
-                setStatus('ready');
-                const s = await startCamera();
-                if (s) setupRealtime(data.examId, data.userId, s);
-            } else {
-                setStatus('error');
-                setDebugInfo(data.error || "Invalid Token");
-            }
-        } catch (e: any) {
-            setStatus('error');
-            setDebugInfo(e.message);
-        }
-    };
-
-    const startCamera = async () => {
-        try {
-            const s = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } },
-                audio: false
-            });
-            setStream(s);
-            if (videoRef.current) videoRef.current.srcObject = s;
-            return s;
-        } catch (e: any) {
-            console.error("Camera Error", e);
-            setDebugInfo("Camera access denied: " + e.message);
-            return null;
-        }
-    };
-
-    const setupRealtime = (examId: string, userId: string, mediaStream: MediaStream) => {
-        const channel = supabase.channel(`proctor-${examId}`);
-
-        const signaling = new WebRTCSignaling(channel, userId, async (msg) => {
-            // Handle Incoming Signals
-            console.log("Received Signal:", msg.type);
-
-            if (msg.type === 'ready' && msg.role === 'host') { // Host = Admin watching
-                // Admin joined, initiate connection
-                setStatus('connected');
-                createPeerConnection(msg.senderId, mediaStream, signaling);
-            }
-
-            if (msg.type === 'answer' && peerRef.current) {
-                await peerRef.current.setRemoteDescription(new RTCSessionDescription(msg.sdp));
-            }
-
-            if (msg.type === 'candidate' && peerRef.current) {
-                await peerRef.current.addIceCandidate(new RTCIceCandidate(msg.candidate));
-            }
-        });
-
-        signalingRef.current = signaling;
-
-        channel
-            .on('broadcast', { event: 'ping-admin' }, (payload: any) => {
-                channel.send({
-                    type: 'broadcast',
-                    event: 'pong-mobile',
-                    payload: { userId, status: 'alive' }
-                });
-            })
-            .subscribe((status: string) => {
-                if (status === 'SUBSCRIBED') {
-                    // Announce presence
-                    channel.send({
-                        type: 'broadcast',
-                        event: 'mobile-connected',
-                        payload: { userId }
-                    });
-
-                    // Also announce WebRTC readiness as 'viewer' (technically mobile is source, but role naming...)
-                    // Let's us 'viewer' means mobile camera source? No.
-                    // 'ready' usually means "I am here".
-                    signaling.sendReady('viewer');
-                }
-            });
-    };
-
-    const createPeerConnection = async (targetId: string, mediaStream: MediaStream, signaling: WebRTCSignaling) => {
-        if (peerRef.current) peerRef.current.close();
-
-        const pc = new RTCPeerConnection({
-            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-        });
-
-        // Add Tracks
-        mediaStream.getTracks().forEach(track => pc.addTrack(track, mediaStream));
-
-        // ICE Candidates
-        pc.onicecandidate = (event) => {
-            if (event.candidate) {
-                signaling.sendCandidate(targetId, event.candidate);
-            }
-        };
-
-        // Create Offer
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        signaling.sendOffer(targetId, offer);
-
-        peerRef.current = pc;
-    };
-
+function ErrorState({ message }: { message: string }) {
     return (
-        <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4">
-            {status === 'validating' && <div className="animate-pulse">Connecting to Secure Exam Environment...</div>}
-
-            {status === 'error' && (
-                <div className="bg-red-900/50 p-6 rounded text-center border border-red-500">
-                    <h1 className="text-xl font-bold mb-2">Connection Failed</h1>
-                    <p>{debugInfo}</p>
-                </div>
-            )}
-
-            {(status === 'ready' || status === 'connected') && (
-                <div className="relative w-full h-full flex flex-col items-center">
-                    <div className="absolute top-4 left-4 z-10 bg-black/50 px-3 py-1 rounded text-xs backdrop-blur-md border border-white/10">
-                        Status: <span className="text-green-400 font-bold uppercase">{status}</span>
-                        {status === 'connected' && <span className="text-blue-400 ml-2 animate-pulse">● Live</span>}
-                    </div>
-
-                    <video
-                        ref={videoRef}
-                        autoPlay
-                        muted
-                        playsInline
-                        className="w-full h-auto max-h-[80vh] object-contain border-2 border-gray-800 rounded-lg"
-                    />
-
-                    <div className="mt-4 text-center text-sm text-gray-400">
-                        <p className="mb-2">Place phone to side showing your face + screen.</p>
-                        <p className="text-xs opacity-50">Do not lock screen.</p>
-                    </div>
-                </div>
-            )}
+        <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 text-center">
+            <div className="bg-red-900/20 p-8 rounded-2xl border border-red-500/50 max-w-sm w-full">
+                <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                <h1 className="text-xl font-bold text-red-500 mb-2">Connection Failed</h1>
+                <p className="text-gray-400 text-sm">{message}</p>
+            </div>
         </div>
     );
 }
