@@ -1,12 +1,17 @@
-import { googleDriveOCR } from "./googleDriveOCR";
-import fs from "fs";
-import path from "path";
-import os from "os";
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
 
+/**
+ * Robust Resume Parser (Build-Safe)
+ * Uses dynamic imports to avoid dependency issues during Next.js build.
+ * Note: OCR capabilities removed per user request for simplified text extraction.
+ */
 export async function parseResume(buffer: Buffer, mimeType: string): Promise<string> {
     try {
         console.log(`[ResumeParser] Starting parse for type: ${mimeType}`);
 
+        // 1. Handle Word Documents (DOC/DOCX)
         if (
             mimeType.includes("wordprocessingml") ||
             mimeType.includes("msword") ||
@@ -14,50 +19,41 @@ export async function parseResume(buffer: Buffer, mimeType: string): Promise<str
             mimeType.includes("officedocument")
         ) {
             console.log("[ResumeParser] DOC/DOCX detected. Using Mammoth...");
-            const mammoth = await import("mammoth").then(m => (m as any).default || m);
-            const result = await mammoth.extractRawText({ buffer });
-            const text = result.value.trim();
-
-            if (text.length < 50) {
-                console.warn("[ResumeParser] DOCX extracted text is too short.");
-            }
-            return text;
-
-        } else if (mimeType.includes("pdf") || mimeType === "application/pdf") {
-            console.log("[ResumeParser] PDF detected. Using pdf-parse...");
-            let text = "";
             try {
-                const pdf = await import("pdf-parse").then(m => (m as any).default || m);
+                const mammothModule: any = await import("mammoth");
+                const mammoth = mammothModule.default || mammothModule;
+                const result = await mammoth.extractRawText({ buffer });
+                return result.value.trim();
+            } catch (wordError) {
+                console.error("[ResumeParser] Mammoth extraction failed:", wordError);
+                return "";
+            }
+        }
+
+        // 2. Handle PDF Documents
+        if (mimeType.includes("pdf") || mimeType === "application/pdf") {
+            console.log("[ResumeParser] PDF detected. Using pdf-parse...");
+            try {
+                const pdfModule: any = await import("pdf-parse");
+                const pdf = pdfModule.default || pdfModule;
                 const data = await pdf(buffer);
-                text = data.text.trim();
+                const text = data.text.trim();
+
+                if (text.length < 50) {
+                    console.warn("[ResumeParser] Extracted PDF text is very short. Scanned document suspected.");
+                }
+                return text;
             } catch (pdfError) {
                 console.error("[ResumeParser] pdf-parse failed:", pdfError);
+                return "";
             }
-
-            // Fallback to OCR if text is very short/empty
-            if (text.length < 100) {
-                console.log("[ResumeParser] Text too short, triggering OCR fallback...");
-                const tempPath = path.join(os.tmpdir(), `ocr_temp_${Date.now()}.pdf`);
-                await fs.promises.writeFile(tempPath, buffer);
-
-                try {
-                    const ocrText = await googleDriveOCR(tempPath);
-                    if (ocrText && ocrText.length > text.length) {
-                        text = ocrText;
-                    }
-                } finally {
-                    if (fs.existsSync(tempPath)) await fs.promises.unlink(tempPath);
-                }
-            }
-            return text;
-
-        } else {
-            console.warn(`[ResumeParser] Unsupported Mime Type: ${mimeType}`);
-            return ""; // Best effort
         }
+
+        console.warn(`[ResumeParser] Unsupported Mime Type: ${mimeType}`);
+        return "";
 
     } catch (error: any) {
         console.error("[ResumeParser] Final Parse Error:", error);
-        return ""; // Never throw to avoid breaking submission
+        return ""; // Best effort: return empty string instead of crashing the flow
     }
 }
