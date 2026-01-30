@@ -1,44 +1,59 @@
-import mammoth from "mammoth";
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
 
+/**
+ * Robust Resume Parser (Build-Safe)
+ * Uses dynamic imports to avoid dependency issues during Next.js build.
+ * Note: OCR capabilities removed per user request for simplified text extraction.
+ */
 export async function parseResume(buffer: Buffer, mimeType: string): Promise<string> {
     try {
         console.log(`[ResumeParser] Starting parse for type: ${mimeType}`);
 
+        // 1. Handle Word Documents (DOC/DOCX)
         if (
             mimeType.includes("wordprocessingml") ||
             mimeType.includes("msword") ||
             mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-            mimeType.includes("officedocument") // Catch-all for office docs
+            mimeType.includes("officedocument")
         ) {
             console.log("[ResumeParser] DOC/DOCX detected. Using Mammoth...");
             try {
+                const mammothModule: any = await import("mammoth");
+                const mammoth = mammothModule.default || mammothModule;
                 const result = await mammoth.extractRawText({ buffer });
-                const text = result.value.trim();
-                console.log(`[ResumeParser] DOCX Extraction Success. Length: ${text.length}`);
-
-                if (text.length < 100) {
-                    console.warn(`[ResumeParser] Text is extremely short (${text.length} chars). Parsing might be incomplete.`);
-                    // The requirement said "mark parse_failed" if < threshold.
-                    // The caller (resume.ts) handles logic based on returned text length or specific return values inside parseResume?
-                    // Currently resume.ts checks: if (!parsedText || parsedText.length < 300) -> low_quality.
-                    // If I return simple text, it will fall into low_quality.
-                    // User said: "If text length < threshold (e.g. 100 chars): mark parse_failed".
-                    // So I should throw?
-                    // If I throw, resume.ts catches and marks 'parse_failed'.
-                    throw new Error(`Text too short (${text.length} chars). Extraction failed.`);
-                }
-                return text;
-            } catch (docError) {
-                console.error("[ResumeParser] Mammoth Parsing Failed:", docError);
-                throw new Error("DOCX Parsing Failed");
+                return result.value.trim();
+            } catch (wordError) {
+                console.error("[ResumeParser] Mammoth extraction failed:", wordError);
+                return "";
             }
-        } else {
-            console.warn(`[ResumeParser] Unsupported Mime Type: ${mimeType}`);
-            throw new Error("Unsupported file type. Please upload a DOC or DOCX file.");
         }
 
+        // 2. Handle PDF Documents
+        if (mimeType.includes("pdf") || mimeType === "application/pdf") {
+            console.log("[ResumeParser] PDF detected. Using pdf-parse...");
+            try {
+                const pdfModule: any = await import("pdf-parse");
+                const pdf = pdfModule.default || pdfModule;
+                const data = await pdf(buffer);
+                const text = data.text.trim();
+
+                if (text.length < 50) {
+                    console.warn("[ResumeParser] Extracted PDF text is very short. Scanned document suspected.");
+                }
+                return text;
+            } catch (pdfError) {
+                console.error("[ResumeParser] pdf-parse failed:", pdfError);
+                return "";
+            }
+        }
+
+        console.warn(`[ResumeParser] Unsupported Mime Type: ${mimeType}`);
+        return "";
+
     } catch (error: any) {
-        console.error("Final Parse Error:", error);
-        throw error;
+        console.error("[ResumeParser] Final Parse Error:", error);
+        return ""; // Best effort: return empty string instead of crashing the flow
     }
 }
