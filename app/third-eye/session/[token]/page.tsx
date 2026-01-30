@@ -2,13 +2,17 @@ import { verifyMobileToken } from "@/lib/proctor-token";
 import MobileCameraView from "@/components/candidate/MobileCameraView";
 import { AlertTriangle } from "lucide-react";
 
-export default function MobileSessionPage({ params }: { params: { token: string } }) {
-    if (!params.token) {
+export const dynamic = 'force-dynamic';
+
+export default async function MobileSessionPage({ params }: { params: Promise<{ token: string }> }) {
+    const { token } = await params;
+
+    if (!token) {
         return <ErrorState message="Invalid Token" />;
     }
 
     try {
-        const payload = verifyMobileToken(params.token);
+        const payload = verifyMobileToken(token);
         if (!payload) throw new Error("Invalid or Expired Token");
 
         return <MobileCameraView examId={payload.examId} userId={payload.userId} />;

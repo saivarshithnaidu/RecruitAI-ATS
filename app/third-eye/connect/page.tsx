@@ -3,13 +3,17 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { AlertTriangle, CheckCircle } from "lucide-react";
 
-export default function MobileConnectPage({ searchParams }: { searchParams: { token: string } }) {
-    if (!searchParams.token) {
+export const dynamic = 'force-dynamic';
+
+export default async function MobileConnectPage({ searchParams }: { searchParams: Promise<{ token: string }> }) {
+    const { token } = await searchParams;
+
+    if (!token) {
         return <ErrorState message="No token provided." />;
     }
 
     try {
-        const payload = verifyMobileToken(searchParams.token);
+        const payload = verifyMobileToken(token);
         if (!payload) throw new Error("Invalid token");
 
         // Token is valid, show start button
@@ -35,7 +39,7 @@ export default function MobileConnectPage({ searchParams }: { searchParams: { to
                     </div>
 
                     <Link
-                        href={`/third-eye/session/${searchParams.token}`}
+                        href={`/third-eye/session/${token}`}
                         className="block w-full py-4 bg-green-600 rounded-xl font-bold hover:bg-green-700 transition active:scale-95"
                     >
                         Start Camera
