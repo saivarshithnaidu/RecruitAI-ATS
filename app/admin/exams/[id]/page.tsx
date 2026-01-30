@@ -103,9 +103,20 @@ export default async function ExamDetailsPage({ params }: { params: Promise<{ id
 
                     {/* Action Buttons */}
                     <div>
-                        {exam.status === 'DRAFT' && (
-                            <VerifyExamButton examId={id} />
-                        )}
+                        <div className="flex items-center gap-2">
+                            {exam.status === 'READY' && (
+                                <Link
+                                    href={`/admin/exams/${id}/monitor`}
+                                    className="px-4 py-2 bg-gray-900 text-white rounded hover:bg-black transition shadow-sm flex items-center gap-2 font-medium"
+                                >
+                                    <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.818v6.364a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                    Live Monitor
+                                </Link>
+                            )}
+                            {exam.status === 'DRAFT' && (
+                                <VerifyExamButton examId={id} />
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -205,11 +216,14 @@ export default async function ExamDetailsPage({ params }: { params: Promise<{ id
                                             <p className="font-medium text-gray-900 mb-1">{qIdx + 1}. {q.question}</p>
                                             {q.options && (
                                                 <ul className="list-disc list-inside text-sm text-gray-600 ml-2">
-                                                    {q.options.map((opt: string, oIdx: number) => (
-                                                        <li key={oIdx} className={opt === q.correct_answer ? "text-green-700 font-semibold" : ""}>
-                                                            {opt} {opt === q.correct_answer && "(Correct)"}
-                                                        </li>
-                                                    ))}
+                                                    {q.options.map((opt: string, oIdx: number) => {
+                                                        const isCorrect = String(opt).trim() === String(q.correct_answer).trim();
+                                                        return (
+                                                            <li key={oIdx} className={isCorrect ? "text-green-700 font-bold bg-green-50 px-2 py-0.5 rounded inline-block" : ""}>
+                                                                {opt} {isCorrect && "(Correct)"}
+                                                            </li>
+                                                        );
+                                                    })}
                                                 </ul>
                                             )}
                                         </div>

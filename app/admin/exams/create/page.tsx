@@ -17,7 +17,14 @@ export default function CreateExamPage() {
         skills: "",
         difficulty: "Medium" as "Easy" | "Medium" | "Hard",
         duration_minutes: 60,
-        pass_mark: 40
+        pass_mark: 40,
+        proctoring_config: {
+            camera: true,
+            mic: true,
+            dual_camera: false, // Default off as it's strict
+            tab_switch: true,
+            copy_paste: true
+        }
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -25,6 +32,17 @@ export default function CreateExamPage() {
         setFormData(prev => ({
             ...prev,
             [name]: value
+        }));
+    };
+
+    const handleProctorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, checked } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            proctoring_config: {
+                ...prev.proctoring_config,
+                [name]: checked
+            }
         }));
     };
 
@@ -186,6 +204,73 @@ export default function CreateExamPage() {
                             onChange={handleChange}
                             className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
                         />
+                    </div>
+                </div>
+
+                <div className="h-px bg-gray-200 my-6"></div>
+
+                {/* Proctoring Settings */}
+                <div className="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                    <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        Security & Proctoring
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <label className="flex items-center space-x-3 p-3 bg-white rounded border cursor-pointer hover:bg-gray-50">
+                            <input
+                                type="checkbox"
+                                name="camera"
+                                checked={formData.proctoring_config?.camera ?? true}
+                                onChange={handleProctorChange}
+                                className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                            />
+                            <div>
+                                <span className="block text-sm font-bold text-gray-700">Laptop Camera</span>
+                                <span className="block text-xs text-gray-400">Record web-cam during exam</span>
+                            </div>
+                        </label>
+
+                        <label className="flex items-center space-x-3 p-3 bg-white rounded border cursor-pointer hover:bg-gray-50">
+                            <input
+                                type="checkbox"
+                                name="mic"
+                                checked={formData.proctoring_config?.mic ?? true}
+                                onChange={handleProctorChange}
+                                className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                            />
+                            <div>
+                                <span className="block text-sm font-bold text-gray-700">Microphone</span>
+                                <span className="block text-xs text-gray-400">Record audio for noise detection</span>
+                            </div>
+                        </label>
+
+                        <label className="flex items-center space-x-3 p-3 bg-white rounded border cursor-pointer hover:bg-gray-50 border-blue-200 ring-1 ring-blue-100">
+                            <input
+                                type="checkbox"
+                                name="dual_camera"
+                                checked={formData.proctoring_config?.dual_camera ?? false}
+                                onChange={handleProctorChange}
+                                className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                            />
+                            <div>
+                                <span className="block text-sm font-bold text-blue-800">Dual Camera (Third Eye)</span>
+                                <span className="block text-xs text-blue-600">Requirement: Mobile phone setup</span>
+                            </div>
+                        </label>
+
+                        <label className="flex items-center space-x-3 p-3 bg-white rounded border cursor-pointer hover:bg-gray-50">
+                            <input
+                                type="checkbox"
+                                name="tab_switch"
+                                checked={formData.proctoring_config?.tab_switch ?? true}
+                                onChange={handleProctorChange}
+                                className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                            />
+                            <div>
+                                <span className="block text-sm font-bold text-gray-700">Tab Locking</span>
+                                <span className="block text-xs text-gray-400">Log tab switches & fullscreen exit</span>
+                            </div>
+                        </label>
                     </div>
                 </div>
 

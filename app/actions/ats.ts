@@ -1,8 +1,9 @@
 "use server"
 
-import { openai, extractTextFromBuffer } from "@/lib/ai"
+import { openai } from "@/lib/ai"
 import { revalidatePath } from "next/cache"
 import { supabaseAdmin } from "@/lib/supabaseAdmin"
+import { parseResume } from "@/lib/parser" // Imported directly
 
 /**
  * Generates ATS Score for an application.
@@ -29,8 +30,10 @@ export async function generateAtsScore(applicationId: string) {
             return { success: true, message: "Already scored", score: app.ats_score, status: app.status }
         }
 
+        let resumeText = "";
+
         // 3. Download Resume from Supabase Storage
-        // app.resume_url stores the storage path (e.g., applications/uid/file.pdf)
+        console.log("Downloading resume file for parsing...");
         const storagePath = app.resume_url
         if (!storagePath) throw new Error("Resume path missing")
 
@@ -54,7 +57,8 @@ export async function generateAtsScore(applicationId: string) {
             : 'application/pdf'
 
         // 4. Extract Text
-        const resumeText = await extractTextFromBuffer(buffer, mimeType)
+        resumeText = await parseResume(buffer, mimeType)
+
         if (!resumeText || resumeText.length < 50) {
             throw new Error("Extracted text is too short or empty")
         }

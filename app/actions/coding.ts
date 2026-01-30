@@ -27,39 +27,58 @@ export async function submitCode(data: CodeSubmission) {
         return { error: "Access denied" };
     }
 
-    // --- EVALUATION LOGIC (MOCK Engine) ---
-    // This simulates a server-side grader (e.g., Judge0, Sphere engine)
-    // Since we don't have a real compiler connected, we use heuristic validation.
+    // --- REAL EVALUATION LOGIC (Piston Engine) ---
+    const { executeCode } = await import('@/lib/piston');
 
-    let passed = false;
-    let output = "Logic check failed. Output did not match expected values.";
-    const totalTestCases = data.testCases?.length || 5;
+    let passed = true;
     let passedCount = 0;
+    const totalTestCases = data.testCases?.length || 0;
 
-    // 1. Manual Override for Testing (Dev backdoor if specific comment used)
-    if (data.code.includes("// pass")) {
-        passed = true;
-        passedCount = totalTestCases;
-        output = "All hidden test cases passed.";
-    }
-    // 2. Base Heuristic: Check for non-empty implementation
-    else if (data.code.length > 20) {
-        // Random "realism" logic for demo:
-        // If code contains critical keywords, we simulate a partial or full pass
-        const keywords = ['return', 'print', 'select', 'if', 'for', 'while'];
-        const hasLogic = keywords.some(k => data.code.toLowerCase().includes(k));
+    // Detailed logs for the user (we will show the output of the FAILED case or the last case)
+    let outputLog = "";
 
-        if (hasLogic) {
-            // Simulate 80% chance of passing if logic keywords exist (for demo)
-            // In REAL PROD: This block calls external API with `data.code` + `data.testCases`
-            passed = true;
-            passedCount = totalTestCases;
-            output = "Target logic achieved. Hidden test cases passed.";
+    if (totalTestCases === 0) {
+        // No test cases? Just run it once to check for syntax errors.
+        const result = await executeCode(data.language, data.code, "");
+        if (result.run.code !== 0) {
+            passed = false;
+            outputLog = result.run.output; // Show error
         } else {
-            output = "Submission received. Logic incomplete or syntax error.";
+            outputLog = "Code executed successfully (No test cases defined). Output:\n" + result.run.stdout;
         }
     } else {
-        output = "Code snippet too short to evaluate. Please complete the implementation.";
+        // Run against each test case
+        for (let i = 0; i < totalTestCases; i++) {
+            const tc = data.testCases![i];
+            const result = await executeCode(data.language, data.code, tc.input);
+
+            // Check Compilation/Runtime Errors
+            if (result.run.code !== 0) {
+                passed = false;
+                outputLog = `Runtime Error on Test Case ${i + 1}:\n${result.run.output}`;
+                break; // Stop on first error ? Or continue? Usually stop.
+            }
+
+            // Normalize Output (Trim whitespace)
+            const actual = result.run.stdout.trim();
+            const expected = tc.output.trim();
+
+            if (actual === expected) {
+                passedCount++;
+                // Keep the log of the last passed case if we haven't failed yet
+                if (passed) {
+                    outputLog = `Test Case ${i + 1} Passed.\nInput: ${tc.input}\nOutput: ${actual}`;
+                }
+            } else {
+                passed = false;
+                outputLog = `Failed Test Case ${i + 1}.\nInput: ${tc.input}\nExpected: ${expected}\nActual: ${actual}`;
+                break; // Stop on first failure
+            }
+        }
+    }
+
+    if (passed && totalTestCases > 0) {
+        outputLog = "All Test Cases Passed! 🚀";
     }
 
     // Save Submission
@@ -77,7 +96,7 @@ export async function submitCode(data: CodeSubmission) {
         test_cases_passed: passedCount,
         total_test_cases: totalTestCases,
         status: passed ? 'passed' : 'failed',
-        output_log: output,
+        output_log: outputLog,
         updated_at: new Date().toISOString()
     };
 
@@ -94,7 +113,7 @@ export async function submitCode(data: CodeSubmission) {
 
     return {
         success: true,
-        output: output,
+        output: outputLog,
         passed: passed,
         testCasesPassed: passedCount,
         totalTestCases: totalTestCases

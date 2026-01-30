@@ -1,66 +1,63 @@
+import { google } from "googleapis";
+import fs from "fs";
 
-import { google } from 'googleapis';
-import fs from 'fs';
+const CLIENT_EMAIL = process.env.GOOGLE_DRIVE_CLIENT_EMAIL;
+const PRIVATE_KEY = process.env.GOOGLE_DRIVE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+const FOLDER_ID = process.env.GOOGLE_DRIVE_RESUME_FOLDER_ID;
 
 export async function googleDriveOCR(filePath: string): Promise<string> {
-    const serviceAccountJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-    if (!serviceAccountJson) {
-        throw new Error("Missing GOOGLE_SERVICE_ACCOUNT_JSON env var");
+    if (!CLIENT_EMAIL || !PRIVATE_KEY) {
+        console.warn("[GoogleDriveOCR] Missing Google Drive credentials. Skipping OCR.");
+        return "";
     }
 
-    let credentials;
     try {
-        credentials = JSON.parse(serviceAccountJson);
-    } catch (e) {
-        throw new Error("Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON");
-    }
+        const auth = new google.auth.JWT(
+            CLIENT_EMAIL,
+            undefined,
+            PRIVATE_KEY,
+            ["https://www.googleapis.com/auth/drive"]
+        );
 
-    const auth = new google.auth.GoogleAuth({
-        credentials,
-        scopes: ['https://www.googleapis.com/auth/drive']
-    });
+        const drive = google.drive({ version: "v3", auth });
 
-    const drive = google.drive({ version: 'v3', auth });
-    let fileId = '';
-
-    try {
-        // 1. Upload PDF as Google Doc (trigger OCR)
-        const uploadRes = await drive.files.create({
+        // 1. Upload file with OCR hint
+        console.log("[GoogleDriveOCR] Uploading file for OCR...");
+        const response = await drive.files.create({
             requestBody: {
-                name: 'temp_ocr_resume_' + Date.now(),
-                mimeType: 'application/vnd.google-apps.document',
-                parents: process.env.GOOGLE_DRIVE_RESUME_FOLDER_ID ? [process.env.GOOGLE_DRIVE_RESUME_FOLDER_ID] : []
+                name: `ocr_${Date.now()}.pdf`,
+                parents: FOLDER_ID ? [FOLDER_ID] : undefined,
+                mimeType: "application/pdf"
             },
             media: {
-                mimeType: 'application/pdf',
+                mimeType: "application/pdf",
                 body: fs.createReadStream(filePath)
-            }
+            },
+            // @ts-ignore
+            ocrLanguage: "en",
+            fields: "id"
         });
 
-        fileId = uploadRes.data.id || '';
-        if (!fileId) throw new Error("Failed to upload file to Google Drive");
-        console.log(`[GoogleOCR] Uploaded fileId: ${fileId}`);
+        const fileId = response.data.id;
+        if (!fileId) throw new Error("Upload failed, no file ID returned");
 
-        // 2. Export as Plain Text
-        const exportRes = await drive.files.export({
-            fileId,
-            mimeType: 'text/plain'
+        // 2. Export as plain text
+        console.log(`[GoogleDriveOCR] Exporting file ${fileId} as text...`);
+        const exportResponse = await drive.files.export({
+            fileId: fileId,
+            mimeType: "text/plain"
         });
 
-        const text = typeof exportRes.data === 'string' ? exportRes.data : String(exportRes.data);
-        return text.trim();
+        const extractedText = exportResponse.data as string;
+
+        // 3. Cleanup (delete the temp file from Drive)
+        await drive.files.delete({ fileId }).catch(e => console.error("[GoogleDriveOCR] Cleanup failed:", e.message));
+
+        console.log(`[GoogleDriveOCR] OCR Successful. Extracted ${extractedText.length} characters.`);
+        return extractedText;
 
     } catch (error: any) {
-        console.error("Google Drive OCR Error:", error);
-        throw new Error("Google OCR Failed: " + (error.message || "Unknown error"));
-    } finally {
-        // 3. Cleanup: Delete the file from Drive
-        if (fileId) {
-            try {
-                await drive.files.delete({ fileId });
-            } catch (cleanupError) {
-                console.warn("Failed to delete temp Drive file:", cleanupError);
-            }
-        }
+        console.error("[GoogleDriveOCR] Critical Error:", error.message);
+        return ""; // Return empty string on failure instead of throwing
     }
 }

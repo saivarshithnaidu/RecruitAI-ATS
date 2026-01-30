@@ -103,9 +103,10 @@ export default async function CandidateDashboard() {
     // Normalizing status for case-insensitive checks
     const currentStatus = application.status.toUpperCase();
 
-    // Fix: Only show exam link if an actual assignment exists.
+    // Fix: Only show exam link if an actual assignment exists AND status is valid for exam
     // relying on 'EXAM_ASSIGNED' status is unreliable if assignment failed or was cancelled.
-    const showExamLink = hasActiveExam;
+    const terminalStatusesForExam = ['WITHDRAWN', 'REJECTED', 'DELETED', 'HIRED', 'INTERVIEW', 'INTERVIEW_SCHEDULED', 'EXAM_FAILED', 'EXAM_PASSED'];
+    const showExamLink = hasActiveExam && !terminalStatusesForExam.includes(currentStatus);
     const showInterviewLink = currentStatus === 'INTERVIEW' || currentStatus === 'HIRED';
 
     // Status Colors

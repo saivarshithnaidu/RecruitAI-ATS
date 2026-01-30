@@ -76,12 +76,21 @@ export default async function AdminExamsPage() {
 
                             {exam.status === 'READY' || exam.status === 'READY_FALLBACK' ||
                                 (exam.status === 'DRAFT' && Array.isArray(exam.questions_data) && exam.questions_data.length > 0) ? (
-                                <Link
-                                    href={`/admin/exams/${exam.id}`}
-                                    className="block w-full text-center px-4 py-2 border border-blue-600 text-blue-600 rounded hover:bg-blue-50 transition"
-                                >
-                                    View Details & Assign
-                                </Link>
+                                <div className="flex gap-2">
+                                    <Link
+                                        href={`/admin/exams/${exam.id}`}
+                                        className="flex-1 text-center px-3 py-2 border border-blue-600 text-blue-600 rounded hover:bg-blue-50 transition text-sm font-medium"
+                                    >
+                                        View Details
+                                    </Link>
+                                    <Link
+                                        href={`/admin/exams/${exam.id}/monitor`}
+                                        className="flex-1 text-center px-3 py-2 bg-gray-900 text-white rounded hover:bg-black transition text-sm font-medium flex items-center justify-center gap-1"
+                                    >
+                                        <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.818v6.364a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                        Monitor
+                                    </Link>
+                                </div>
                             ) : (
                                 <RetryExamButton examId={exam.id} />
                             )}
