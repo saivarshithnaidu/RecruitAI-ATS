@@ -2,22 +2,28 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 async function checkSchema() {
-    console.log("Fetching columns for 'profiles' table...");
-    // Supabase RPC or just try to select * limit 1 to see keys if RPC not available easily for schema
-    const { data, error } = await supabaseAdmin
-        .from('profiles')
+    console.log("Fetching columns for 'candidate_profiles' table...");
+    const { data: profile, error: profileError } = await supabaseAdmin
+        .from('candidate_profiles')
         .select('*')
         .limit(1);
 
-    if (error) {
-        console.error("Error fetching profiles:", error);
-        return;
+    if (profileError) {
+        console.error("Error fetching candidate_profiles:", profileError);
+    } else if (profile && profile.length > 0) {
+        console.log("candidate_profiles Columns:", Object.keys(profile[0]));
     }
 
-    if (data && data.length > 0) {
-        console.log("Columns found in row 1:", Object.keys(data[0]));
-    } else {
-        console.log("No rows found. Cannot deduce columns from data. Trying to insert dummy to see error.");
+    console.log("\nFetching columns for 'applications' table...");
+    const { data: app, error: appError } = await supabaseAdmin
+        .from('applications')
+        .select('*')
+        .limit(1);
+
+    if (appError) {
+        console.error("Error fetching applications:", appError);
+    } else if (app && app.length > 0) {
+        console.log("applications Columns:", Object.keys(app[0]));
     }
 }
 

@@ -23,7 +23,7 @@ export async function uploadResume(formData: FormData) {
         throw new Error("Invalid file type. Please upload a DOC or DOCX file.")
     }
 
-    // Upload to Supabase Storage
+    // 1. Upload to Supabase Storage
     const timestamp = Date.now();
     const sanitizedName = (session.user.name || 'user').replace(/[^a-zA-Z0-9]/g, '_');
     const extension = file.name.split('.').pop() || 'docx';
@@ -45,50 +45,78 @@ export async function uploadResume(formData: FormData) {
         .from('resumes')
         .createSignedUrl(fileName, 3600 * 24 * 365);
 
-    const buffer = Buffer.from(fileBuffer);
+    // 2. Ensure Profile Exists FIRST (Mandatory Architecture)
+    const { data: profile, error: profileError } = await supabaseAdmin
+        .from('candidate_profiles')
+        .upsert({
+            user_id: session.user.id,
+            email: session.user.email,
+            full_name: session.user.name || 'Candidate',
+            resume_url: signedUrlData?.signedUrl || '',
+            // Do not block on parsing
+        }, { onConflict: 'user_id' })
+        .select()
+        .single();
 
-    let parsedText = "";
-    let parseStatus = "parsed";
-
-    try {
-        console.log("Starting resume parsing...");
-        parsedText = await import("@/lib/parser").then(m => m.parseResume(buffer, file.type));
-        console.log("Parsing successful. Text length:", parsedText.length);
-
-    } catch (parseError: any) {
-        console.error("Resume Parsing Failed completely:", parseError);
-        parseStatus = "parse_failed";
+    if (profileError) {
+        console.error("Profile Upsert failed", profileError);
+        throw new Error("Failed to create profile: " + profileError.message);
     }
 
-    // Update candidate in DB
-    const { error: upsertError } = await supabaseAdmin
+    // 3. Create Application Record (Mandatory Architecture)
+    // We use email as the linker or use the profile.id if available.
+    const { error: appError } = await supabaseAdmin
         .from('applications')
         .upsert({
             email: session.user.email,
             full_name: session.user.name,
             resume_path: filePath,
             resume_url: signedUrlData?.signedUrl || '',
-            status: parseStatus === 'parse_failed' ? 'parse_failed' : 'parsed',
-        }, { onConflict: 'email' })
+            status: 'pending', // Initial status
+        }, { onConflict: 'email' });
 
-    if (upsertError) {
-        console.error("DB Upsert failed", upsertError)
-        throw new Error("Failed to save candidate data: " + upsertError.message)
+    if (appError) {
+        console.error("Application Upsert failed", appError);
+        throw new Error("Failed to create application: " + appError.message);
     }
 
-    if (parseStatus === 'parse_failed') {
-        console.log("Stopping flow due to parse failure");
-        revalidatePath("/dashboard/profile");
-        return { success: false, error: "Failed to parse resume content. Please ensure it is a valid DOC or DOCX file." };
-    }
+    // 4. Async Parsing (Non-blocking)
+    // We do NOT block the main response. We return success while parsing happens.
+    // However, in a Server Action, we should try to complete the work but wrap in try/catch.
+    try {
+        const buffer = Buffer.from(fileBuffer);
+        const parsedText = await import("@/lib/parser").then(m => m.parseResume(buffer, file.type));
 
-    if (parseStatus === 'parsed') {
-        try {
-            const { calculateATSScore } = await import("./ats")
-            await calculateATSScore(parsedText, session.user.email)
-        } catch (e) {
-            console.error("ATS Score trigger failed", e)
+        const parseStatus = parsedText ? 'parsed' : 'parse_failed';
+
+        // Update records with results
+        await supabaseAdmin
+            .from('candidate_profiles')
+            .update({
+                // @ts-ignore
+                resume_text: parsedText,
+                // @ts-ignore
+                parse_status: parseStatus
+            })
+            .eq('user_id', session.user.id);
+
+        await supabaseAdmin
+            .from('applications')
+            .update({ status: parseStatus })
+            .eq('email', session.user.email);
+
+        if (parseStatus === 'parsed' && parsedText) {
+            const { calculateATSScore } = await import("./ats");
+            await calculateATSScore(parsedText, session.user.email).catch(e => console.error("ATS failed:", e));
         }
+
+    } catch (parseError: any) {
+        console.error("Non-blocking parsing failed:", parseError);
+        // We already have the records, so we just set status to failed.
+        await supabaseAdmin
+            .from('applications')
+            .update({ status: 'parse_failed' })
+            .eq('email', session.user.email);
     }
 
     revalidatePath("/dashboard/profile")

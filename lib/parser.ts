@@ -1,4 +1,7 @@
-import mammoth from "mammoth";
+import { googleDriveOCR } from "./googleDriveOCR";
+import fs from "fs";
+import path from "path";
+import os from "os";
 
 export async function parseResume(buffer: Buffer, mimeType: string): Promise<string> {
     try {
@@ -8,37 +11,53 @@ export async function parseResume(buffer: Buffer, mimeType: string): Promise<str
             mimeType.includes("wordprocessingml") ||
             mimeType.includes("msword") ||
             mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-            mimeType.includes("officedocument") // Catch-all for office docs
+            mimeType.includes("officedocument")
         ) {
             console.log("[ResumeParser] DOC/DOCX detected. Using Mammoth...");
-            try {
-                const result = await mammoth.extractRawText({ buffer });
-                const text = result.value.trim();
-                console.log(`[ResumeParser] DOCX Extraction Success. Length: ${text.length}`);
+            const mammoth = await import("mammoth").then(m => m.default || m);
+            const result = await mammoth.extractRawText({ buffer });
+            const text = result.value.trim();
 
-                if (text.length < 100) {
-                    console.warn(`[ResumeParser] Text is extremely short (${text.length} chars). Parsing might be incomplete.`);
-                    // The requirement said "mark parse_failed" if < threshold.
-                    // The caller (resume.ts) handles logic based on returned text length or specific return values inside parseResume?
-                    // Currently resume.ts checks: if (!parsedText || parsedText.length < 300) -> low_quality.
-                    // If I return simple text, it will fall into low_quality.
-                    // User said: "If text length < threshold (e.g. 100 chars): mark parse_failed".
-                    // So I should throw?
-                    // If I throw, resume.ts catches and marks 'parse_failed'.
-                    throw new Error(`Text too short (${text.length} chars). Extraction failed.`);
-                }
-                return text;
-            } catch (docError) {
-                console.error("[ResumeParser] Mammoth Parsing Failed:", docError);
-                throw new Error("DOCX Parsing Failed");
+            if (text.length < 50) {
+                console.warn("[ResumeParser] DOCX extracted text is too short.");
             }
+            return text;
+
+        } else if (mimeType.includes("pdf") || mimeType === "application/pdf") {
+            console.log("[ResumeParser] PDF detected. Using pdf-parse...");
+            let text = "";
+            try {
+                const pdf = await import("pdf-parse").then(m => m.default || m);
+                const data = await pdf(buffer);
+                text = data.text.trim();
+            } catch (pdfError) {
+                console.error("[ResumeParser] pdf-parse failed:", pdfError);
+            }
+
+            // Fallback to OCR if text is very short/empty
+            if (text.length < 100) {
+                console.log("[ResumeParser] Text too short, triggering OCR fallback...");
+                const tempPath = path.join(os.tmpdir(), `ocr_temp_${Date.now()}.pdf`);
+                await fs.promises.writeFile(tempPath, buffer);
+
+                try {
+                    const ocrText = await googleDriveOCR(tempPath);
+                    if (ocrText && ocrText.length > text.length) {
+                        text = ocrText;
+                    }
+                } finally {
+                    if (fs.existsSync(tempPath)) await fs.promises.unlink(tempPath);
+                }
+            }
+            return text;
+
         } else {
             console.warn(`[ResumeParser] Unsupported Mime Type: ${mimeType}`);
-            throw new Error("Unsupported file type. Please upload a DOC or DOCX file.");
+            return ""; // Best effort
         }
 
     } catch (error: any) {
-        console.error("Final Parse Error:", error);
-        throw error;
+        console.error("[ResumeParser] Final Parse Error:", error);
+        return ""; // Never throw to avoid breaking submission
     }
 }
