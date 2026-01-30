@@ -20,6 +20,7 @@ export default function DualCameraSetup({ examId, userId, onReady }: DualCameraS
 
     useEffect(() => {
         generateToken();
+        checkInitialStatus(); // Check if already connected
         const channel = setupRealtime();
 
         return () => {
@@ -42,23 +43,51 @@ export default function DualCameraSetup({ examId, userId, onReady }: DualCameraS
         }
     };
 
+    const checkInitialStatus = async () => {
+        const { data } = await supabase
+            .from('exam_proctoring_sessions')
+            .select('mobile_connected')
+            .eq('assignment_id', examId)
+            .single();
+
+        if (data?.mobile_connected) {
+            setStatus('connected');
+            onReady(true);
+        }
+    };
+
     const setupRealtime = () => {
-        const channel = supabase.channel(`proctor-${examId}`);
+        const channel = supabase.channel(`proctor-${examId}`); // Use same channel name
 
         channel
+            // 1. Listen for DB Changes (The Robust Handshake)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'exam_proctoring_sessions',
+                    filter: `assignment_id=eq.${examId}`
+                },
+                (payload: any) => {
+                    const newVal = payload.new;
+                    if (newVal && newVal.mobile_connected) {
+                        setStatus('connected');
+                        onReady(true);
+                    } else if (newVal && newVal.mobile_connected === false) {
+                        setStatus('waiting');
+                        onReady(false);
+                    }
+                }
+            )
+            // 2. Keep Broadcast as Fallback / Latency optimized path
             .on('broadcast', { event: 'mobile-connected' }, (payload: any) => {
-                const data = payload.payload || payload; // handle potential nesting differences
-                if (data.userId === userId) {
-                    setStatus('connected');
-                    onReady(true);
-                }
+                // ... handled by db usually, but good for instant feedback
+                setStatus('connected');
+                onReady(true);
             })
-            .on('broadcast', { event: 'mobile-disconnected' }, (payload: any) => {
-                const data = payload.payload || payload;
-                if (data.userId === userId) {
-                    setStatus('waiting');
-                    onReady(false);
-                }
+            .on('broadcast', { event: 'mobile-disconnected' }, () => {
+                // setStatus('waiting'); // Optional: Let DB decide or use this for speed
             })
             .subscribe();
 

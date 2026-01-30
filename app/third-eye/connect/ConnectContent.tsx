@@ -16,6 +16,7 @@ export default function ConnectContent() {
     const videoRef = useRef<HTMLVideoElement>(null);
     const peerRef = useRef<RTCPeerConnection | null>(null);
     const signalingRef = useRef<WebRTCSignaling | null>(null);
+    const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const supabase = supabaseClient;
 
     const [debugInfo, setDebugInfo] = useState<string>("");
@@ -27,38 +28,27 @@ export default function ConnectContent() {
             return;
         }
 
-        // Validate Token with Backend
-        validateToken(token);
+        // Validate on mount
+        validateCheck(token);
 
         return () => {
+            // Cleanup Handshake
+            if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
+
+            // Attempt disconnect
+            if (token) {
+                fetch('/api/third-eye/disconnect', {
+                    method: 'POST',
+                    body: JSON.stringify({ token }),
+                    keepalive: true
+                }).catch(() => { });
+            }
+
             if (stream) stream.getTracks().forEach(t => t.stop());
             if (peerRef.current) peerRef.current.close();
             if (signalingRef.current) signalingRef.current.channel.unsubscribe();
         }
     }, [token]);
-
-    const validateToken = async (t: string) => {
-        try {
-            const res = await fetch('/api/proctor/mobile-auth', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: t })
-            });
-            const data = await res.json();
-
-            if (res.ok && data.success) {
-                setStatus('ready');
-                const s = await startCamera();
-                if (s) setupRealtime(data.examId, data.userId, s);
-            } else {
-                setStatus('error');
-                setDebugInfo(data.error || "Invalid Token");
-            }
-        } catch (e: any) {
-            setStatus('error');
-            setDebugInfo(e.message);
-        }
-    };
 
     const startCamera = async () => {
         try {
@@ -74,6 +64,31 @@ export default function ConnectContent() {
             setDebugInfo("Camera access denied: " + e.message);
             return null;
         }
+    };
+
+    const createPeerConnection = async (targetId: string, mediaStream: MediaStream, signaling: WebRTCSignaling) => {
+        if (peerRef.current) peerRef.current.close();
+
+        const pc = new RTCPeerConnection({
+            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+        });
+
+        // Add Tracks
+        mediaStream.getTracks().forEach(track => pc.addTrack(track, mediaStream));
+
+        // ICE Candidates
+        pc.onicecandidate = (event) => {
+            if (event.candidate) {
+                signaling.sendCandidate(targetId, event.candidate);
+            }
+        };
+
+        // Create Offer
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        signaling.sendOffer(targetId, offer);
+
+        peerRef.current = pc;
     };
 
     const setupRealtime = (examId: string, userId: string, mediaStream: MediaStream) => {
@@ -123,29 +138,58 @@ export default function ConnectContent() {
             });
     };
 
-    const createPeerConnection = async (targetId: string, mediaStream: MediaStream, signaling: WebRTCSignaling) => {
-        if (peerRef.current) peerRef.current.close();
+    const startHandshake = async (t: string) => {
+        try {
+            // 1. Connect
+            await fetch('/api/third-eye/connect', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: t })
+            });
 
-        const pc = new RTCPeerConnection({
-            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-        });
+            // 2. Start Ping
+            // Clear existing if any
+            if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
 
-        // Add Tracks
-        mediaStream.getTracks().forEach(track => pc.addTrack(track, mediaStream));
+            pingIntervalRef.current = setInterval(async () => {
+                try {
+                    await fetch('/api/third-eye/ping', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token: t })
+                    });
+                } catch (e) { console.error("Ping failed"); }
+            }, 5000);
 
-        // ICE Candidates
-        pc.onicecandidate = (event) => {
-            if (event.candidate) {
-                signaling.sendCandidate(targetId, event.candidate);
+        } catch (e) {
+            console.error("Handshake failed", e);
+        }
+    };
+
+    const validateCheck = async (t: string) => {
+        try {
+            const res = await fetch('/api/proctor/mobile-auth', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: t })
+            });
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                setStatus('ready');
+                const s = await startCamera();
+                if (s) {
+                    setupRealtime(data.examId, data.userId, s);
+                    startHandshake(t); // Start backend sync
+                }
+            } else {
+                setStatus('error');
+                setDebugInfo(data.error || "Invalid Token");
             }
-        };
-
-        // Create Offer
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        signaling.sendOffer(targetId, offer);
-
-        peerRef.current = pc;
+        } catch (e: any) {
+            setStatus('error');
+            setDebugInfo(e.message);
+        }
     };
 
     return (

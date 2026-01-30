@@ -15,6 +15,41 @@ export default function LiveMonitorClient({ examId, assignmentId, candidateId }:
     const peerRef = useRef<RTCPeerConnection | null>(null);
     const signalingRef = useRef<WebRTCSignaling | null>(null);
     const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
+    const [dbSignal, setDbSignal] = useState<boolean>(false);
+
+    useEffect(() => {
+        // Initial Fetch
+        const fetchDeepStatus = async () => {
+            const { data } = await supabaseClient
+                .from('exam_proctoring_sessions')
+                .select('mobile_connected')
+                .eq('assignment_id', assignmentId)
+                .single();
+            if (data) setDbSignal(data.mobile_connected);
+        };
+        fetchDeepStatus();
+
+        // Realtime Subscription
+        const channel = supabaseClient.channel(`proctor-admin-${assignmentId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'exam_proctoring_sessions',
+                    filter: `assignment_id=eq.${assignmentId}`
+                },
+                (payload: any) => {
+                    const newVal = payload.new;
+                    if (newVal) setDbSignal(newVal.mobile_connected);
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabaseClient.removeChannel(channel);
+        };
+    }, [assignmentId]);
 
     useEffect(() => {
         const channel = supabaseClient.channel(`proctor-${examId}`);
@@ -91,7 +126,7 @@ export default function LiveMonitorClient({ examId, assignmentId, candidateId }:
             {status !== 'connected' && (
                 <div className="absolute inset-0 flex items-center justify-center text-gray-500 z-10">
                     <div className="text-center">
-                        <p className="animate-pulse mb-2">{status === 'connecting' ? 'Waiting for Mobile...' : 'Disconnected'}</p>
+                        <p className="animate-pulse mb-2">{dbSignal ? 'Mobile is Online. Waiting for Video...' : 'Mobile is Offline.'}</p>
                         <p className="text-xs">Ensure candidate has scanned QR code.</p>
                     </div>
                 </div>
@@ -105,12 +140,24 @@ export default function LiveMonitorClient({ examId, assignmentId, candidateId }:
                 className="w-full h-full object-contain"
             />
 
-            <div className="absolute top-2 left-2 z-20 bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow">
-                MOBILE (360°)
+            <div className="absolute top-2 left-2 z-20 flex flex-col gap-1">
+                <div className="bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow">
+                    MOBILE (360°)
+                </div>
+                {dbSignal ? (
+                    <div className="bg-green-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
+                        SIGNAL LIVE
+                    </div>
+                ) : (
+                    <div className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow">
+                        NO SIGNAL
+                    </div>
+                )}
             </div>
 
             <div className="absolute bottom-2 right-2 z-20">
-                <div className={`w-3 h-3 rounded-full ${status === 'connected' ? 'bg-green-500' : 'bg-red-500'} border-2 border-white`}></div>
+                <div className={`w-3 h-3 rounded-full ${status === 'connected' ? 'bg-green-500' : 'bg-red-500'} border-2 border-white`} title={status === 'connected' ? 'Video Connected' : 'Video Disconnected'}></div>
             </div>
         </div>
     );
