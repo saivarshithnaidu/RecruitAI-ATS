@@ -155,5 +155,19 @@ export const EmailTemplates = {
             <p>Our support team is reviewing your query and will get back to you as soon as possible.</p>
             <p>If you have additional details to add, please reply to this email.</p>
         `)
+    }),
+
+    // 1️⃣1️⃣ INACTIVE REMINDER
+    reminderInvite: (firstName: string, loginLink: string) => ({
+        subject: `Complete Your Application – RecruitAI`,
+        html: wrapContent(`
+            <p>Hello ${firstName},</p>
+            <p>We noticed that you started your application process with RecruitAI but haven't completed it yet.</p>
+            <p>We encourage you to log in and complete your profile or pending assessments to move forward in the hiring process.</p>
+            <br>
+            <a href="${loginLink}" style="background-color: #2563EB; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Login to Continue</a>
+            <br><br>
+            <p style="font-size: 13px; color: #666;">If you have already completed your application, please ignore this email.</p>
+        `)
     })
 };

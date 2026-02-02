@@ -109,6 +109,29 @@ export const authOptions: NextAuthOptions = {
     // ... callbacks
 
     callbacks: {
+        async signIn({ user, account, profile }) {
+            // TRACKING: Update last_login_at
+            if (user && user.email) {
+                try {
+                    console.log(`[Auth] Tracking login for ${user.email}`);
+                    const { error } = await supabaseAdmin
+                        .from('profiles')
+                        .update({
+                            last_login_at: new Date().toISOString(),
+                            login_method: account?.provider || 'unknown'
+                        })
+                        .eq('email', user.email);
+
+                    if (error) {
+                        console.error("[Auth] Failed to update login tracking:", error.message);
+                        // Don't block login, just log
+                    }
+                } catch (e) {
+                    console.error("[Auth] Tracking exception:", e);
+                }
+            }
+            return true;
+        },
         async jwt({ token, user, trigger, session }) {
             if (user) {
                 console.log(`[Auth] User logged in: ${user.email} (Provider ID: ${user.id})`);

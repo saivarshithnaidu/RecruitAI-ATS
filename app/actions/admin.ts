@@ -1,124 +1,243 @@
-"use server"
+"use server";
 
-import { supabaseAdmin } from "@/lib/supabaseAdmin"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { ROLES } from "@/lib/roles"
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { ROLES } from "@/lib/roles";
+import { revalidatePath } from "next/cache";
 
-// Verify if user is admin
-async function checkAdmin() {
-    const session = await getServerSession(authOptions)
+export type InactiveCandidate = {
+    user_id: string;
+    email: string;
+    full_name: string;
+    last_login_at: string | null;
+    reminder_sent_at: string | null;
+    computed_status: 'LOGGED_IN_ONLY' | 'PROFILE_INCOMPLETE' | 'APPLICATION_INCOMPLETE' | 'EXAM_ASSIGNED_NOT_STARTED' | 'EXAM_STARTED_NOT_SUBMITTED' | 'UNKNOWN';
+}
+
+export async function getInactiveCandidates(): Promise<{ success: boolean; candidates?: InactiveCandidate[]; error?: string }> {
+    const session = await getServerSession(authOptions);
     // @ts-ignore
     if (!session || session.user?.role !== ROLES.ADMIN) {
-        throw new Error("Unauthorized: Admin access required")
+        return { success: false, error: "Unauthorized" };
     }
-    return session;
+
+    try {
+        console.log("Fetching Inactive Candidates...");
+
+        // 1. Fetch ALL Profiles (Base of users)
+        // We filter somewhat by existing logins if possible, but let's just get all role=candidate (metadata) or profiles table.
+        // Assuming 'profiles' table has candidates.
+        const { data: profiles, error: profileError } = await supabaseAdmin
+            .from('profiles')
+            .select('id, email, full_name, last_login_at, reminder_sent_at')
+            .not('last_login_at', 'is', null) // Only those who logged in at least once
+            .order('last_login_at', { ascending: false });
+
+        if (profileError) throw profileError;
+
+        // 2. Fetch Applications
+        const { data: applications } = await supabaseAdmin
+            .from('applications')
+            .select('user_id, status');
+
+        // 3. Fetch Exam Assignments
+        const { data: exams } = await supabaseAdmin
+            .from('exam_assignments')
+            .select('candidate_id, status');
+
+        // 4. Compute Status
+        const inactiveList: InactiveCandidate[] = [];
+        const appMap = new Map((applications || []).map(a => [a.user_id, a]));
+        const examMap = new Map((exams || []).map(e => [e.candidate_id, e]));
+
+        for (const p of profiles) {
+            const app = appMap.get(p.id);
+            const exam = examMap.get(p.id);
+
+            // Exclude Completed/Terminal States
+            if (app) {
+                if (['EXAM_PASSED', 'HIRED', 'REJECTED', 'INTERVIEW_SCHEDULED', 'INTERVIEW_COMPLETED'].includes(app.status)) {
+                    continue; // Active or Completed
+                }
+            }
+
+            // Also exclude if Exam Passed/Failed (redundant check but safe)
+            if (exam) {
+                if (['passed', 'failed', 'completed'].includes(exam.status)) {
+                    continue;
+                }
+            }
+
+            let status: InactiveCandidate['computed_status'] = 'UNKNOWN';
+
+            if (!app) {
+                // No Application
+                if (!p.full_name) {
+                    // Very basic check for profile completeness.
+                    status = 'PROFILE_INCOMPLETE';
+                } else {
+                    status = 'LOGGED_IN_ONLY'; // Or APPLICATION_INCOMPLETE
+                    // If they logged in and have name but no app -> App Incomplete
+                    status = 'APPLICATION_INCOMPLETE';
+                }
+            } else {
+                // Has Application
+                if (app.status === 'APPLIED') {
+                    // Applied but no Exam? Usually Admin needs to assign exam.
+                    // THIS IS NOT A CANDIDATE ACTION. Admin needs to assign exam.
+                    // So candidate is WAITING. Not strictly "Inactive" in terms of "dropped off".
+                    // But requirements say "Did not complete... Assigned exam attempt".
+                    // So if they are 'APPLIED' they are waiting.
+                    // Only if 'EXAM_ASSIGNED' we track.
+                    continue; // Waiting for Admin
+                } else if (app.status === 'EXAM_ASSIGNED') {
+                    if (exam?.status === 'assigned') {
+                        status = 'EXAM_ASSIGNED_NOT_STARTED';
+                    } else if (exam?.status === 'in_progress') {
+                        status = 'EXAM_STARTED_NOT_SUBMITTED';
+                    }
+                }
+            }
+
+            if (status !== 'UNKNOWN') {
+                inactiveList.push({
+                    user_id: p.id,
+                    email: p.email,
+                    full_name: p.full_name || "Unknown",
+                    last_login_at: p.last_login_at,
+                    reminder_sent_at: p.reminder_sent_at,
+                    computed_status: status
+                });
+            }
+        }
+
+        return { success: true, candidates: inactiveList };
+
+    } catch (e: any) {
+        console.error("Fetch Inactive Error:", e);
+        return { success: false, error: e.message };
+    }
 }
 
-export async function approveCandidateProfile(candidateId: string) {
+export async function sendCandidateReminder(candidateId: string) {
+    const session = await getServerSession(authOptions);
+    // @ts-ignore
+    if (!session || session.user?.role !== ROLES.ADMIN) {
+        return { success: false, error: "Unauthorized" };
+    }
+
     try {
-        await checkAdmin();
+        // 1. Check constraints (24h)
+        const { data: profile } = await supabaseAdmin
+            .from('profiles')
+            .select('email, full_name, reminder_sent_at')
+            .eq('id', candidateId)
+            .single();
 
-        const { error } = await supabaseAdmin
-            .from('candidate_profiles')
-            .update({
-                verified_by_admin: true,
-                verification_status: 'verified'
-            })
-            .eq('user_id', candidateId);
+        if (!profile) return { error: "Candidate not found" };
 
-        if (error) throw error;
+        if (profile.reminder_sent_at) {
+            const lastSent = new Date(profile.reminder_sent_at).getTime();
+            const now = Date.now();
+            const hoursDiff = (now - lastSent) / (1000 * 60 * 60);
+            if (hoursDiff < 24) {
+                return { error: "Reminder already sent in the last 24 hours." };
+            }
+        }
+
+        // 2. Send Email
+        const { sendEmail } = await import("@/lib/email");
+        const { EmailTemplates } = await import("@/lib/email-templates");
+
+        const firstName = profile.full_name?.split(' ')[0] || "Candidate";
+        const loginLink = `${process.env.NEXT_PUBLIC_APP_URL}/auth/login`;
+
+        const template = EmailTemplates.reminderInvite(firstName, loginLink);
+
+        const emailRes = await sendEmail({
+            to: profile.email,
+            subject: template.subject,
+            html: template.html
+        });
+
+        if (!emailRes.success) throw new Error("Email sending failed");
+
+        // 3. Update DB
+        await supabaseAdmin
+            .from('profiles')
+            .update({ reminder_sent_at: new Date().toISOString() })
+            .eq('id', candidateId);
+
+        revalidatePath('/admin/inactive');
         return { success: true };
-    } catch (error: any) {
-        console.error("Admin approval error:", error);
-        return { error: error.message };
+
+    } catch (e: any) {
+        return { success: false, error: e.message };
     }
 }
 
-export async function rejectCandidateProfile(candidateId: string) {
-    try {
-        await checkAdmin();
+// ------------------------------------------------------------------
+// RESTORED FUNCTIONS FOR CANDIDATE PROFILE MANAGEMENT
+// ------------------------------------------------------------------
 
-        const { error } = await supabaseAdmin
-            .from('candidate_profiles')
-            .update({
-                verified_by_admin: false,
-                verification_status: 'rejected'
-            })
-            .eq('user_id', candidateId);
-
-        if (error) throw error;
-        return { success: true };
-    } catch (error: any) {
-        console.error("Admin rejection error:", error);
-        return { error: error.message };
+export async function getAdminCandidateProfile(id: string) {
+    const session = await getServerSession(authOptions);
+    // @ts-ignore
+    if (!session || session.user?.role !== ROLES.ADMIN) {
+        return { error: "Unauthorized" };
     }
-}
 
-export async function getAdminCandidateProfile(candidateId: string) {
     try {
-        await checkAdmin();
-
-        // Fetch profile with all verification fields using USER_ID
         const { data: profile, error } = await supabaseAdmin
-            .from('candidate_profiles')
-            .select(`
-                *,
-                email_verified,
-                verified_by_admin,
-                verification_status
-            `)
-            .eq('user_id', candidateId)
+            .from('profiles')
+            .select('*')
+            .eq('id', id)
             .single();
 
-        if (error && error.code !== 'PGRST116') { // PGRST116 is "Row not found"
-            console.error("Supabase Profile Fetch Error:", error);
-            throw new Error("Database error fetching profile");
-        }
+        if (error) throw error;
+        return { profile };
+    } catch (e: any) {
+        return { error: e.message };
+    }
+}
 
-        if (profile) {
-            return { profile };
-        }
+export async function approveCandidateProfile(id: string) {
+    const session = await getServerSession(authOptions);
+    // @ts-ignore
+    if (!session || session.user?.role !== ROLES.ADMIN) {
+        return { error: "Unauthorized" };
+    }
 
-        // --- Auto-Create Profile Logic (Recovery) ---
-        console.warn(`Profile not found for user_id ${candidateId}. Auto-creating...`);
+    try {
+        await supabaseAdmin
+            .from('profiles')
+            .update({ verified_by_admin: true, verification_status: 'approved' })
+            .eq('id', id);
 
-        // 1. Fetch User Data from Auth to get Email
-        const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(candidateId);
+        revalidatePath(`/admin/dashboard/candidates/${id}`);
+        return { success: true };
+    } catch (e: any) {
+        return { error: e.message };
+    }
+}
 
-        if (userError || !userData.user) {
-            console.error("Auth User Fetch Error:", userError);
-            throw new Error(`User not found in Auth system for ID: ${candidateId}`);
-        }
+export async function rejectCandidateProfile(id: string) {
+    const session = await getServerSession(authOptions);
+    // @ts-ignore
+    if (!session || session.user?.role !== ROLES.ADMIN) {
+        return { error: "Unauthorized" };
+    }
 
-        const userEmail = userData.user.email;
+    try {
+        await supabaseAdmin
+            .from('profiles')
+            .update({ verified_by_admin: false, verification_status: 'rejected' })
+            .eq('id', id);
 
-        // 2. Insert Empty Profile
-        const newProfile = {
-            user_id: candidateId,
-            email: userEmail,
-            full_name: userData.user.user_metadata?.full_name || 'Candidate', // Fallback name
-            email_verified: false,
-            phone_verified: false,
-            verified_by_admin: false,
-            verification_status: 'pending'
-        };
-
-        const { data: createdProfile, error: insertError } = await supabaseAdmin
-            .from('candidate_profiles')
-            .insert(newProfile)
-            .select()
-            .single();
-
-        if (insertError) {
-            console.error("Profile Auto-Creation Error:", insertError);
-            throw new Error("Failed to auto-create missing profile.");
-        }
-
-        return { profile: createdProfile };
-
-    } catch (error: any) {
-        console.error("Admin fetch profile error [FULL]:", error);
-        return { error: error.message || "An unexpected error occurred fetching profile." };
+        revalidatePath(`/admin/dashboard/candidates/${id}`);
+        return { success: true };
+    } catch (e: any) {
+        return { error: e.message };
     }
 }
