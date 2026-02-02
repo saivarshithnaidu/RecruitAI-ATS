@@ -205,29 +205,24 @@ export async function assignExam(
 
                     try {
                         const { sendEmail } = await import("@/lib/email");
+                        const { EmailTemplates } = await import("@/lib/email-templates");
+
+                        // Fetch user name (fallback if not in session context, but we have user object)
+                        // @ts-ignore
+                        const firstName = user.user.user_metadata?.full_name?.split(' ')[0] || user.user.name?.split(' ')[0] || "Candidate";
+
+                        const template = EmailTemplates.examAssigned(
+                            firstName,
+                            examData.title || "Technical Assessment",
+                            scheduled_start_time,
+                            examData.duration_minutes || 60,
+                            `${process.env.NEXT_PUBLIC_APP_URL}/auth/login` // Direct them to login, logic will guide them
+                        );
+
                         await sendEmail({
                             to: user.user.email,
-                            subject: "Skill Assessment Invite - RecruitAI",
-                            html: `
-                                <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px;">
-                                    <h2>Coding Assessment Invitation</h2>
-                                    <p>Hello,</p>
-                                    <p>You have been invited to take the <strong>${examData.title || 'Technical Assessment'}</strong>.</p>
-                                    
-                                    <div style="background: #f4f4f4; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                                        <p><strong>Duration:</strong> ${examData.duration_minutes || 60} minutes</p>
-                                        <p><strong>Start Time:</strong> ${scheduled_start_time ? new Date(scheduled_start_time).toLocaleString() : 'Any time'}</p>
-                                    </div>
-
-                                    <a href="${trackedLink}" style="background-color: #2563EB; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-                                        Start Assessment
-                                    </a>
-                                    
-                                    <p style="font-size: 12px; color: #666; margin-top: 20px;">
-                                        Note: This link is unique to you. Do not share it.
-                                    </p>
-                                </div>
-                            `
+                            subject: template.subject,
+                            html: template.html
                         });
 
                         // Update tracking status
@@ -588,13 +583,21 @@ export async function submitExam(assignmentId: string, answers: Record<string, s
     // SEND RESULT EMAIL
     try {
         const { sendEmail } = await import("@/lib/email");
-        const subject = resultStatus === 'passed' ? "You Passed! Next Steps - RecruitAI" : "Exam Result - RecruitAI";
-        const html = resultStatus === 'passed'
-            ? `<h1>Congratulations!</h1><p>You scored ${totalScore} and <strong>PASSED</strong> the assessment.</p><p>We will schedule your interview shortly.</p>`
-            : `<p>Thank you for taking the assessment.</p><p>Unfortunately, you scored ${totalScore} (Pass Mark: ${passMark}) and did not clear the round.</p>`;
+        const { EmailTemplates } = await import("@/lib/email-templates");
+
+        const firstName = session.user.name?.split(' ')[0] || "Candidate";
+        // @ts-ignore
+        const examTitle = assignment.exams?.title || "Assessment";
 
         if (user.user?.email) {
-            await sendEmail({ to: user.user.email, subject, html });
+            let template;
+            if (resultStatus === 'passed') {
+                template = EmailTemplates.examPassed(firstName, examTitle);
+            } else {
+                template = EmailTemplates.examFailed(firstName, examTitle);
+            }
+
+            await sendEmail({ to: user.user.email, subject: template.subject, html: template.html });
         }
     } catch (e) {
         console.error("Failed to send exam result email:", e);

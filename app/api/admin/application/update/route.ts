@@ -41,35 +41,23 @@ export async function POST(req: Request) {
 
         // 4. Send Email Notifications
         try {
+            const { EmailTemplates } = await import("@/lib/email-templates");
+            const firstName = application.full_name.split(' ')[0];
+            const role = application.role_applied || "Position";
+
             if (newStatus === 'SHORTLISTED') {
+                const template = EmailTemplates.applicationShortlisted(firstName, role);
                 await sendEmail({
                     to: application.email,
-                    subject: `Update on your application for ${application.role_applied} - RecruitAI`,
-                    html: `
-                        <div style="font-family: Arial, sans-serif; color: #333;">
-                            <h2>Congratulations, ${application.full_name}!</h2>
-                            <p>We are pleased to inform you that your profile has been <strong>SHORTLISTED</strong> for the <strong>${application.role_applied}</strong> position.</p>
-                            <p><strong>Next Steps:</strong></p>
-                            <p>You will shortly receive an invitation for the assessment round. Please keep an eye on your inbox (and spam folder).</p>
-                            <br/>
-                            <p>Best Regards,<br/>RecruitAI Talent Team</p>
-                        </div>
-                    `
+                    subject: template.subject,
+                    html: template.html
                 });
             } else if (newStatus === 'REJECTED') {
+                const template = EmailTemplates.applicationRejected(firstName, role);
                 await sendEmail({
                     to: application.email,
-                    subject: `Update on your application - RecruitAI`,
-                    html: `
-                        <div style="font-family: Arial, sans-serif; color: #333;">
-                            <p>Dear ${application.full_name},</p>
-                            <p>Thank you for giving us the opportunity to review your application for the <strong>${application.role_applied}</strong> position.</p>
-                            <p>After careful consideration, we have decided to move forward with other candidates who more closely match our current requirements.</p>
-                            <p>We wish you all the best in your job search.</p>
-                            <br/>
-                            <p>Best Regards,<br/>RecruitAI Talent Team</p>
-                        </div>
-                    `
+                    subject: template.subject,
+                    html: template.html
                 });
             }
         } catch (emailError) {

@@ -46,27 +46,26 @@ export async function requestOtp(type: 'email' | 'phone') {
     try {
         const { sendEmail } = await import("@/lib/email");
 
-        let subject = "Your Verification Code - RecruitAI";
-        let messageIntro = "Your verification code is:";
+        const { EmailTemplates } = await import("@/lib/email-templates");
+
+        // Extract name
+        // We might not have the name in the session depending on auth provider or if it's a fresh signup
+        // Default to "Candidate" if missing
+        // @ts-ignore
+        const firstName = session.user.name?.split(' ')[0] || "Candidate";
+
+        let template;
 
         if (type === 'phone') {
-            subject = "Phone Verification Code (Sent via Email)";
-            messageIntro = "To verify your phone number, please use the following code:";
+            template = EmailTemplates.phoneVerification(firstName, otp);
+        } else {
+            template = EmailTemplates.emailVerification(firstName, otp);
         }
 
         const emailResult = await sendEmail({
             to: email,
-            subject: subject,
-            html: `
-                <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 5px;">
-                    <h1 style="color: #333;">RecruitAI Verification</h1>
-                    <p>${messageIntro}</p>
-                    <h2 style="color: #2563eb; font-size: 32px; letter-spacing: 5px;">${otp}</h2>
-                    <p>This code is valid for 10 minutes.</p>
-                    ${type === 'phone' ? '<p style="color: #d97706; font-size: 13px; font-weight: bold;">Note: This code was sent to your email to verify your phone number.</p>' : ''}
-                    <p style="color: #666; font-size: 12px; margin-top: 20px;">If you did not request this, please ignore this email.</p>
-                </div>
-            `
+            subject: template.subject,
+            html: template.html
         });
 
         if (!emailResult.success) {

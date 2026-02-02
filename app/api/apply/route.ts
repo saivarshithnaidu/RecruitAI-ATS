@@ -188,6 +188,38 @@ export async function POST(request: Request) {
             console.error("Failed to sync profile:", profileUpdateError);
         }
 
+        // 6. Send Confirmation Email
+        try {
+            const { sendEmail } = await import("@/lib/email");
+            const { EmailTemplates } = await import("@/lib/email-templates");
+
+            // Extract First Name
+            const firstName = fullName.split(' ')[0];
+            // Role - assuming generic or extracted, relying on basic fallback if not in form
+            const role = "Software Engineer"; // Or fetch from a role mapping if available. 
+            // WAIT, logic flow: Applications usually apply to a Job/Exam? Or generic?
+            // The code has `role_applied` in database but not in form input here?
+            // Checking DB Schema: `role_applied` column exists?
+            // Reading file again, `insert` query at line 159 didn't have `role_applied`. 
+            // Wait, checking `applications` table insert.
+            // Ah, line 166: `status: 'APPLIED'`. No role column?
+            // Line 28 selects `role_applied` in update route. So it must exist.
+            // But this route doesn't seem to save it?
+            // User input `fullName`, `email`, `phone`, `resume`. No role.
+            // Assuming "General Application" or derivation.
+            // Let's use "General Application" or "Open Role" for now to be safe.
+
+            const emailData = EmailTemplates.applicationSubmitted(firstName, "General Application");
+
+            await sendEmail({
+                to: email,
+                subject: emailData.subject,
+                html: emailData.html
+            });
+        } catch (mailError) {
+            console.error("Failed to send application confirmation email:", mailError);
+        }
+
         return NextResponse.json({ success: true, message: 'Application submitted successfully' });
 
     } catch (error: any) {

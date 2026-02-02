@@ -158,20 +158,21 @@ export async function scheduleInterview(data: {
         // 4. Send Email Notification
         const { data: user } = await supabaseAdmin.auth.admin.getUserById(data.candidateId);
         if (user && user.user?.email) {
-            const dateStr = new Date(data.scheduledAt).toLocaleString();
+            const { EmailTemplates } = await import("@/lib/email-templates");
+            // @ts-ignore
+            const firstName = user.user.user_metadata?.full_name?.split(' ')[0] || "Candidate";
+
+            const template = EmailTemplates.interviewScheduled(
+                firstName,
+                data.scheduledAt,
+                data.mode,
+                data.duration
+            );
+
             await sendEmail({
                 to: user.user.email,
-                subject: "Interview Scheduled - RecruitAI",
-                html: `
-                    <h1>Interview Scheduled</h1>
-                    <p>Dear Candidate,</p>
-                    <p>Your AI interview has been scheduled for <strong>${dateStr}</strong>.</p>
-                    <p>Duration: ${data.duration} minutes.</p>
-                    <p>Please log in to your dashboard at the scheduled time to begin.</p>
-                    <p>Ensure you have a working camera and microphone.</p>
-                    <br/>
-                    <p>Best Regards,<br/>RecruitAI Team</p>
-                `
+                subject: template.subject,
+                html: template.html
             });
         }
 
@@ -457,9 +458,21 @@ export async function finalizeInterviewDecision(interviewId: string, decision: '
 
     if (application) {
         try {
-            await import('@/lib/mail').then(mod =>
-                mod.sendStatusUpdateEmail(application.email, application.full_name, decision)
-            );
+            await import('@/lib/email').then(async (mod) => {
+                const { EmailTemplates } = await import("@/lib/email-templates");
+                const firstName = application.full_name.split(' ')[0];
+                const role = (application as any).role_applied || "Position";
+
+                let template;
+                if (decision === 'HIRED') {
+                    // Using shortlisted template as placeholder for now as discussed
+                    template = EmailTemplates.applicationShortlisted(firstName, role);
+                } else { // REJECTED
+                    template = EmailTemplates.applicationRejected(firstName, role);
+                }
+
+                await mod.sendEmail({ to: application.email, subject: template.subject, html: template.html });
+            });
         } catch (e) {
             console.error("Email dispatch failed:", e);
         }
