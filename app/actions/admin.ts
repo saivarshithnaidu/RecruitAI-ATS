@@ -151,7 +151,7 @@ export async function sendCandidateReminder(candidateId: string) {
         const { EmailTemplates } = await import("@/lib/email-templates");
 
         const firstName = profile.full_name?.split(' ')[0] || "Candidate";
-        const loginLink = `${process.env.NEXT_PUBLIC_APP_URL}/auth/login`;
+        const loginLink = "https://www.recruitaitech.in";
 
         const template = EmailTemplates.reminderInvite(firstName, loginLink);
 

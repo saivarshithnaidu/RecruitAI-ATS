@@ -112,7 +112,7 @@ export async function verifyOtp(type: 'email' | 'phone', code: string) {
     const updateData: any = {
         email_verified: true,
         phone_verified: true, // Auto-verify phone as well
-        phone_verified_via: 'email_fallback' // Audit trail
+        // phone_verified_via: 'email_fallback' // Removed as column missing in DB
     };
 
     const { error: updateError } = await supabaseAdmin
