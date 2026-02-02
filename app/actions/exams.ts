@@ -240,45 +240,24 @@ export async function assignExam(
                         console.error("Failed to send invite email:", emailErr);
                     }
 
-                    // B. Send WhatsApp (If phone exists)
-                    try {
-                        const { data: profile } = await supabaseAdmin
-                            .from('candidate_profiles')
-                            .select('phone')
-                            .eq('user_id', cid)
-                            .single();
-
-                        const phone = profile?.phone || user.user.phone;
-
-                        // Only try sending if we have a phone number
-                        if (phone) {
-                            const { sendExamInvite } = await import("@/lib/whatsapp");
-                            const waRes = await sendExamInvite(
-                                phone,
-                                examData.title || "Technical Assessment",
-                                trackedLink
-                            );
-
-                            if (!waRes.success) {
-                                console.warn(`WhatsApp Invite Failed for ${cid}: ${waRes.error}`);
-                            } else {
-                                console.log(`WhatsApp Invite Sent to ${cid}`);
-                            }
-                        }
-                    } catch (waErr) {
-                        console.error("WhatsApp Dispatch Error:", waErr);
+                    // WhatsApp Notification removed (Email-Only Policy)
+                    if (phone) {
+                        console.log("Skipping WhatsApp invite for", cid);
                     }
+                } catch (waErr) {
+                    console.error("WhatsApp Dispatch Error (Ignored):", waErr);
                 }
             }
         }
+    }
 
         revalidatePath('/admin/exams');
-        return { success: true };
+    return { success: true };
 
-    } catch (error: any) {
-        console.error("Assign Exam Error:", error);
-        return { error: error.message };
-    }
+} catch (error: any) {
+    console.error("Assign Exam Error:", error);
+    return { error: error.message };
+}
 }
 
 export async function verifyExam(examId: string) {

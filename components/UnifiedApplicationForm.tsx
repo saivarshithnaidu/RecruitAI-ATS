@@ -241,8 +241,9 @@ export default function UnifiedApplicationForm({ initialProfile }: { initialProf
                                     </Button>
                                     <Button type="button" variant="ghost" onClick={() => setOtpSent(false)} disabled={phoneLoading}>Change Number</Button>
                                 </div>
-                                <p className="text-xs text-blue-600 mt-2">
-                                    OTP sent via SMS to {phoneInput}. Valid for 5 mins.
+                                <p className="text-xs text-blue-600 mt-2 font-medium">
+                                    OTP sent to your registered EMAIL address. <br />
+                                    (Phone verification uses email OTP due to service policy).
                                 </p>
                             </div>
                         )}

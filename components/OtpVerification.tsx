@@ -32,7 +32,7 @@ export default function OtpVerification({ type, isVerified, target, label }: Pro
                 setMessage(res.error);
                 setStatus('idle');
             } else {
-                setMessage(`OTP sent to ${target}`);
+                setMessage(`OTP sent to your email`);
                 setStatus('input');
             }
         } catch (e) {
@@ -88,6 +88,11 @@ export default function OtpVerification({ type, isVerified, target, label }: Pro
             </div>
 
             <p className="text-xs text-gray-500 mb-3">{target || 'No details provided'}</p>
+            {type === 'phone' && (
+                <p className="text-[10px] text-amber-600 mb-2">
+                    Note: Verification code will be sent to your email.
+                </p>
+            )}
 
             {status === 'idle' && (
                 <button
