@@ -15,14 +15,26 @@ export default async function InvitePage({ searchParams }: { searchParams: { tok
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     try {
-        // 1. Log Click
-        await supabase
+        // 1. Log Click in generic invites table
+        const { data } = await supabase
             .from('invites')
             .update({
                 clicked: true,
                 clicked_at: new Date().toISOString()
             })
-            .eq('token', token);
+            .eq('token', token)
+            .select('id')
+            .single();
+
+        // 2. Log Analytics (Rich Data)
+        if (data?.id) {
+            await import("@/lib/analytics").then(mod =>
+                mod.logInviteClick({
+                    source: 'generic_invite',
+                    invite_id: data.id
+                })
+            );
+        }
 
         // 2. Redirect to Registration/Application
         // We could pass the email via query param if we fetched it, 

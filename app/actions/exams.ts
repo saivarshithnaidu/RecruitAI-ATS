@@ -240,24 +240,18 @@ export async function assignExam(
                         console.error("Failed to send invite email:", emailErr);
                     }
 
-                    // WhatsApp Notification removed (Email-Only Policy)
-                    if (phone) {
-                        console.log("Skipping WhatsApp invite for", cid);
-                    }
-                } catch (waErr) {
-                    console.error("WhatsApp Dispatch Error (Ignored):", waErr);
+
                 }
             }
         }
-    }
 
         revalidatePath('/admin/exams');
-    return { success: true };
+        return { success: true };
 
-} catch (error: any) {
-    console.error("Assign Exam Error:", error);
-    return { error: error.message };
-}
+    } catch (error: any) {
+        console.error("Assign Exam Error:", error);
+        return { error: error.message };
+    }
 }
 
 export async function verifyExam(examId: string) {
