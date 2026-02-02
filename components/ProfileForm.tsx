@@ -68,6 +68,42 @@ export default function ProfileForm({ profile }: { profile: any }) {
                     </div>
                 </div>
 
+                {/* Address Fields */}
+                <div className="sm:col-span-6 border-t pt-4 mt-4">
+                    <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">Address</h3>
+                    <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                        <div className="sm:col-span-6">
+                            <label htmlFor="address_street" className="block text-sm font-medium text-gray-700">Street Address</label>
+                            <input type="text" name="address_street" id="address_street" defaultValue={profile?.address_street || ''}
+                                className="mt-1 shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border" />
+                        </div>
+
+                        <div className="sm:col-span-2">
+                            <label htmlFor="address_city" className="block text-sm font-medium text-gray-700">City</label>
+                            <input type="text" name="address_city" id="address_city" defaultValue={profile?.address_city || ''}
+                                className="mt-1 shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border" />
+                        </div>
+
+                        <div className="sm:col-span-2">
+                            <label htmlFor="address_state" className="block text-sm font-medium text-gray-700">State</label>
+                            <select id="address_state" name="address_state" defaultValue={profile?.address_state || 'Andhra Pradesh'}
+                                className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                <option value="Andhra Pradesh">Andhra Pradesh</option>
+                                <option value="Telangana">Telangana</option>
+                                <option value="Karnataka">Karnataka</option>
+                                <option value="Tamil Nadu">Tamil Nadu</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+
+                        <div className="sm:col-span-2">
+                            <label htmlFor="address_pincode" className="block text-sm font-medium text-gray-700">Pincode</label>
+                            <input type="text" name="address_pincode" id="address_pincode" defaultValue={profile?.address_pincode || ''}
+                                className="mt-1 shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border" />
+                        </div>
+                    </div>
+                </div>
+
                 {/* Email - Read Only */}
                 <div className="sm:col-span-4">
                     <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email (Verified: {profile?.email_verified ? 'Yes' : 'No'})</label>

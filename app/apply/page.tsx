@@ -1,9 +1,10 @@
-import ApplicationForm from '@/components/ApplicationForm';
+import UnifiedApplicationForm from '@/components/UnifiedApplicationForm';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { ROLES } from '@/lib/roles';
+import { getProfile } from '@/app/actions/profile';
 
 export default async function ApplyPage() {
     const session = await getServerSession(authOptions);
@@ -34,15 +35,18 @@ export default async function ApplyPage() {
         redirect("/candidate/application");
     }
 
+    // Fetch existing profile to pre-fill
+    const profile = await getProfile();
+
     return (
         <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-3xl mx-auto text-center mb-8">
+            <div className="max-w-4xl mx-auto text-center mb-8">
                 <h1 className="text-3xl font-extrabold text-gray-900">Join our Team</h1>
                 <p className="mt-4 text-lg text-gray-600">
-                    We are looking for talented individuals to join our growing team. Apply below!
+                    Complete your profile and apply in one step.
                 </p>
             </div>
-            <ApplicationForm />
+            <UnifiedApplicationForm initialProfile={profile} />
         </div>
     );
 }

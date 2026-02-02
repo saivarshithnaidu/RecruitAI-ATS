@@ -97,6 +97,10 @@ export async function updateProfile(formData: FormData) {
     const rawData = {
         full_name: formData.get('full_name'),
         phone: formData.get('phone'), // Changed from mobile_number
+        address_street: formData.get('address_street'),
+        address_city: formData.get('address_city'),
+        address_state: formData.get('address_state'),
+        address_pincode: formData.get('address_pincode'),
         education: formData.get('education') ? JSON.parse(formData.get('education') as string) : [],
         skills: formData.get('skills'),
         preferred_roles: formData.get('preferred_roles'),
@@ -114,6 +118,10 @@ export async function updateProfile(formData: FormData) {
             email: session.user.email,
             full_name: rawData.full_name,
             phone: rawData.phone,
+            address_street: rawData.address_street,
+            address_city: rawData.address_city,
+            address_state: rawData.address_state,
+            address_pincode: rawData.address_pincode,
             education: rawData.education,
             skills: skillsArray,
             preferred_roles: rolesArray,

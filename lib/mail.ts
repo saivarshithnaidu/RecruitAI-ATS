@@ -1,11 +1,14 @@
 
 import nodemailer from 'nodemailer';
 
-const SMTP_HOST = process.env.EMAIL_HOST || 'smtp.gmail.com';
-const SMTP_PORT = parseInt(process.env.EMAIL_PORT || '587');
-const SMTP_USER = process.env.EMAIL_USER;
-const SMTP_PASS = process.env.EMAIL_PASS;
-const EMAIL_FROM = process.env.EMAIL_FROM || '"RecruitAI" <no-reply@recruitai.com>';
+const SMTP_HOST = process.env.SMTP_HOST;
+const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587');
+const SMTP_USER = process.env.SMTP_USER;
+const SMTP_PASS = process.env.SMTP_PASS;
+
+const FROM_NAME = process.env.MAIL_FROM_NAME || 'RecruitAI';
+const FROM_EMAIL = process.env.MAIL_FROM_EMAIL || 'support@recruitai.in';
+const EMAIL_FROM = `"${FROM_NAME}" <${FROM_EMAIL}>`;
 
 // Create reusable transporter object using the default SMTP transport
 const transporter = nodemailer.createTransport({
@@ -66,6 +69,36 @@ export async function sendStatusUpdateEmail(to: string, name: string, status: 'H
     } catch (error) {
         console.error("Error sending email:", error);
         // Don't fail the request if email fails, just log it
+        return false;
+    }
+}
+
+export async function sendVerificationEmail(to: string, otp: string) {
+    const isConfigured = SMTP_USER && SMTP_PASS;
+
+    if (!isConfigured) {
+        console.log(`[MOCK OTP] To: ${to}, OTP: ${otp}`);
+        return true;
+    }
+
+    try {
+        const info = await transporter.sendMail({
+            from: EMAIL_FROM,
+            to,
+            subject: 'Verify your Phone Number - RecruitAI',
+            html: `
+                <div style="font-family: sans-serif; padding: 20px;">
+                    <h2>Phone Verification</h2>
+                    <p>Use the following OTP to verify your phone number:</p>
+                    <h1 style="color: #2563eb; letter-spacing: 5px;">${otp}</h1>
+                    <p>This code is valid for 10 minutes.</p>
+                </div>
+            `,
+        });
+        console.log("OTP Sent: %s", info.messageId);
+        return true;
+    } catch (error) {
+        console.error("Error sending OTP:", error);
         return false;
     }
 }
