@@ -54,6 +54,7 @@ export default withAuth(
                 if (
                     pathname === "/" ||
                     pathname.startsWith("/auth") ||
+                    pathname.startsWith("/invite") ||
                     pathname.startsWith("/api/auth") ||
                     pathname.startsWith("/api/webhooks")
                 ) {
