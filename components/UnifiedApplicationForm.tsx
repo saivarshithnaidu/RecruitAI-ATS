@@ -223,8 +223,8 @@ export default function UnifiedApplicationForm({ initialProfile }: { initialProf
                                     placeholder="Enter 10-digit mobile number"
                                     required
                                     defaultValue={initialProfile?.phone}
-                                    disabled={phoneVerified || otpSent}
-                                    className={phoneVerified ? "bg-green-50 border-green-200" : ""}
+                                    readOnly={phoneVerified || otpSent}
+                                    className={phoneVerified ? "bg-green-50 border-green-200" : otpSent ? "bg-gray-100" : ""}
                                     onChange={(e) => setPhoneInput(e.target.value)}
                                     maxLength={10}
                                 />
