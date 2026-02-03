@@ -102,6 +102,9 @@ export default function UnifiedApplicationForm({ initialProfile }: { initialProf
     // Roles State
     const [selectedRoles, setSelectedRoles] = useState<string[]>(getInitialRoles());
 
+    // State for field-level errors
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string[]> | null>(null);
+
     async function handleSendOtp() {
         if (!phoneInput || phoneInput.length < 10) {
             setMessage({ type: 'error', text: "Please enter a valid phone number" });
@@ -147,6 +150,7 @@ export default function UnifiedApplicationForm({ initialProfile }: { initialProf
         }
 
         setMessage(null);
+        setFieldErrors(null); // Clear previous errors
         const res = await submitUnifiedApplication({}, formData);
 
         if (res.success) {
@@ -157,9 +161,18 @@ export default function UnifiedApplicationForm({ initialProfile }: { initialProf
             }, 1500);
         } else {
             setMessage({ type: 'error', text: res.message || "Something went wrong." });
+            if (res.errors) {
+                setFieldErrors(res.errors);
+            }
             window.scrollTo(0, 0);
         }
     }
+
+    // Helper to display field error
+    const FieldError = ({ name }: { name: string }) => {
+        if (!fieldErrors || !fieldErrors[name]) return null;
+        return <p className="text-xs text-red-500 mt-1 font-medium">{fieldErrors[name][0]}</p>;
+    };
 
     return (
         <form ref={formRef} action={clientAction} className="space-y-8 max-w-4xl mx-auto pb-12">
@@ -185,6 +198,7 @@ export default function UnifiedApplicationForm({ initialProfile }: { initialProf
                     <div className="space-y-2">
                         <Label htmlFor="fullName">Full Name <span className="text-red-500">*</span></Label>
                         <Input id="fullName" name="fullName" placeholder="John Doe" required defaultValue={initialProfile?.full_name} />
+                        <FieldError name="fullName" />
                     </div>
 
                     <div className="space-y-2">
@@ -248,6 +262,7 @@ export default function UnifiedApplicationForm({ initialProfile }: { initialProf
                             </div>
                         )}
                         <input type="hidden" name="phoneVerified" value={phoneVerified ? "true" : "false"} />
+                        <FieldError name="phone" />
                     </div>
                 </CardContent>
             </Card>
@@ -262,11 +277,13 @@ export default function UnifiedApplicationForm({ initialProfile }: { initialProf
                     <div className="md:col-span-2 space-y-2">
                         <Label htmlFor="addressStreet">Street Address <span className="text-red-500">*</span></Label>
                         <Input id="addressStreet" name="addressStreet" placeholder="Flat No, Street Name, Landmark" required defaultValue={initialProfile?.address_street} />
+                        <FieldError name="addressStreet" />
                     </div>
 
                     <div className="space-y-2">
                         <Label htmlFor="addressCity">City <span className="text-red-500">*</span></Label>
                         <Input id="addressCity" name="addressCity" placeholder="Visakhapatnam" required defaultValue={initialProfile?.address_city} />
+                        <FieldError name="addressCity" />
                     </div>
 
                     <div className="space-y-2">
@@ -284,11 +301,13 @@ export default function UnifiedApplicationForm({ initialProfile }: { initialProf
                             <option value="Tamil Nadu">Tamil Nadu</option>
                             <option value="Other">Other</option>
                         </select>
+                        <FieldError name="addressState" />
                     </div>
 
                     <div className="space-y-2">
                         <Label htmlFor="addressPincode">Pincode <span className="text-red-500">*</span></Label>
                         <Input id="addressPincode" name="addressPincode" placeholder="530001" maxLength={6} pattern="\d{6}" required defaultValue={initialProfile?.address_pincode} />
+                        <FieldError name="addressPincode" />
                     </div>
                 </CardContent>
             </Card>
@@ -303,11 +322,13 @@ export default function UnifiedApplicationForm({ initialProfile }: { initialProf
                     <div className="space-y-2">
                         <Label htmlFor="educationDegree">Degree <span className="text-red-500">*</span></Label>
                         <Input id="educationDegree" name="educationDegree" placeholder="B.Tech, B.Sc, MCA" required defaultValue={eduData.degree} />
+                        <FieldError name="educationDegree" />
                     </div>
 
                     <div className="space-y-2">
                         <Label htmlFor="educationYear">Graduation Year <span className="text-red-500">*</span></Label>
                         <Input id="educationYear" name="educationYear" placeholder="2024" type="number" min="1990" max="2030" required defaultValue={eduData.year} />
+                        <FieldError name="educationYear" />
                     </div>
 
                     {/* College Selection System */}
@@ -404,6 +425,7 @@ export default function UnifiedApplicationForm({ initialProfile }: { initialProf
                                     )}
                                 </div>
                             )}
+                            <FieldError name="educationCollege" />
                         </div>
                     </div>
                 </CardContent>
@@ -420,6 +442,7 @@ export default function UnifiedApplicationForm({ initialProfile }: { initialProf
                         <Label htmlFor="skills">Skills <span className="text-red-500">*</span></Label>
                         <Input id="skills" name="skills" placeholder="React, Python, SQL, Communication (Comma separated)" required defaultValue={getInitialSkills()} />
                         <p className="text-xs text-gray-500">Separate multiple skills with commas.</p>
+                        <FieldError name="skills" />
                     </div>
 
                     <div className="space-y-2">
@@ -438,6 +461,7 @@ export default function UnifiedApplicationForm({ initialProfile }: { initialProf
                         </div>
                         <input type="hidden" name="preferredRoles" value={selectedRoles.join(', ')} />
                         {selectedRoles.length === 0 && <p className="text-xs text-red-500">Please select at least one role.</p>}
+                        <FieldError name="preferredRoles" />
                     </div>
                 </CardContent>
             </Card>

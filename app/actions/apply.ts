@@ -55,17 +55,17 @@ export async function submitUnifiedApplication(
 
     // 1. Extract Data
     const rawData = {
-        fullName: formData.get("fullName") as string,
-        phone: formData.get("phone") as string,
-        addressStreet: formData.get("addressStreet") as string,
-        addressCity: formData.get("addressCity") as string,
-        addressState: formData.get("addressState") as string,
-        addressPincode: formData.get("addressPincode") as string,
-        educationDegree: formData.get("educationDegree") as string,
-        educationCollege: formData.get("educationCollege") as string,
-        educationYear: formData.get("educationYear") as string,
-        skills: formData.get("skills") as string,
-        preferredRoles: formData.get("preferredRoles") as string,
+        fullName: (formData.get("fullName") as string)?.trim(),
+        phone: (formData.get("phone") as string)?.trim(),
+        addressStreet: (formData.get("addressStreet") as string)?.trim(),
+        addressCity: (formData.get("addressCity") as string)?.trim(),
+        addressState: (formData.get("addressState") as string)?.trim(),
+        addressPincode: (formData.get("addressPincode") as string)?.trim(),
+        educationDegree: (formData.get("educationDegree") as string)?.trim(),
+        educationCollege: (formData.get("educationCollege") as string)?.trim(),
+        educationYear: (formData.get("educationYear") as string)?.trim(),
+        skills: (formData.get("skills") as string)?.trim(),
+        preferredRoles: (formData.get("preferredRoles") as string)?.trim(),
     };
 
     const resumeFile = formData.get("resume") as File;
