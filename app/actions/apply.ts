@@ -107,17 +107,18 @@ export async function submitUnifiedApplication(
         } = validated.data;
 
         // --- SECURITY CHECK: VERIFY PHONE OTP STATUS ---
-        const { data: otpRecord } = await supabaseAdmin
-            .from('phone_otps')
-            .select('verified')
-            .eq('phone', phone)
+        // We now check candidate_profiles because the unified OTP flow updates that table directly.
+        // The phone_otps table is legacy/deprecated for this flow.
+        const { data: profileCheck } = await supabaseAdmin
+            .from('candidate_profiles')
+            .select('phone, phone_verified')
+            .eq('user_id', userId)
             .single();
 
-        // Allow if running in dev/test without strict OTP, OR enforce it?
-        // Requirement said "Disable submit until phone is verified".
-        // Use strict check.
-        if (!otpRecord?.verified) {
-            console.warn(`⚠️ Blocked submission for unverified phone: ${phone}`);
+        // Strict check: The profile must have the SAME phone number as submitted, AND be verified.
+        // If the user changed the number in the form, they must have verified it (which updates the profile).
+        if (!profileCheck || profileCheck.phone !== phone || !profileCheck.phone_verified) {
+            console.warn(`⚠️ Blocked submission: Profile phone '${profileCheck?.phone}' vs Form '${phone}', Verified: ${profileCheck?.phone_verified}`);
             return { success: false, message: "Please verify your mobile number before submitting." };
         }
         // -----------------------------------------------
@@ -176,7 +177,7 @@ export async function submitUnifiedApplication(
         }
 
         // 7. Check for Existing Active Application
-        const terminalStatuses = ['WITHDRAWN', 'REJECTED', 'EXAM_FAILED', 'DELETED', 'HIRED'];
+        const terminalStatuses = ['WITHDRAWN', 'REJECTED', 'EXAM_FAILED', 'DELETED', 'HIRED', 'EXAM_EXPIRED', 'EXPIRED'];
         const { data: existingApps } = await supabaseAdmin
             .from('applications')
             .select('status')
@@ -206,7 +207,7 @@ export async function submitUnifiedApplication(
             .from('applications')
             .insert({
                 user_id: userId,
-                profile_id: profile.id,
+                profile_id: userId, // Fixed: Schema expects user_id here (confirmed via debug)
                 full_name: fullName,
                 email: email,
                 phone: phone,
