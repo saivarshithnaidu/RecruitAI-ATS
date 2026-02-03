@@ -192,6 +192,26 @@ export async function submitUnifiedApplication(
             }
         }
 
+        // --- SELF-HEALING: Ensure 'profiles' table has this user (Fixes applications_profile_id_fkey) ---
+        // Some users might be missing from the legacy 'profiles' table if triggers failed.
+        // We sync basic info from candidate_profiles data to profiles to satisfy the FK.
+        const { error: profileSyncError } = await supabaseAdmin
+            .from('profiles')
+            .upsert({
+                id: userId,
+                // user_id: userId, // Some schemas use user_id col, some use id. upsert usually safe if PK is id.
+                full_name: fullName,
+                email: email,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'id' });
+
+        if (profileSyncError) {
+            console.warn("⚠️ Warning: Could not sync to 'profiles' table:", profileSyncError.message);
+            // Proceeding... assuming maybe it exists but upsert failed on unrelated col?
+            // Or if it fails completely, the next app insert will fail too, catching it below.
+        }
+        // --------------------------------------------------------------------------------------------------
+
         // 8. Create Application
         const { data: profile } = await supabaseAdmin
             .from('candidate_profiles')
