@@ -49,7 +49,7 @@ export async function GET() {
         // Fetch Exam Assignments for Tracking
         const { data: assignments } = await supabaseAdmin
             .from('exam_assignments')
-            .select('candidate_id, status, invite_status, invite_sent_at, invite_clicked_at')
+            .select('id, candidate_id, status, invite_status, invite_sent_at, invite_clicked_at')
             .in('candidate_id', userIds);
 
         const assignmentMap = new Map();
@@ -82,6 +82,7 @@ export async function GET() {
                 ...app,
                 resume_url: signedUrl,
                 invite_tracking: assignment ? {
+                    assignment_id: assignment.id, // Added ID
                     status: assignment.invite_status,
                     sent_at: assignment.invite_sent_at,
                     clicked_at: assignment.invite_clicked_at,

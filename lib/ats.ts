@@ -91,22 +91,6 @@ export async function scoreApplication(applicationId: string) {
         let atsSummary = "";
         let finalStatus = "";
 
-        // 4. Handle Parse Failure
-        if (parseFailed || !resumeText || resumeText.length < 50) {
-            const { error: updateError } = await supabaseAdmin.from("applications").update({
-                status: 'parse_failed',
-                ats_summary: "Resume parsing failed. Please re-upload resume.",
-            }).eq("id", applicationId);
-
-            if (updateError) {
-                console.error("Failed to update status to parse_failed:", updateError);
-                return { success: false, message: "DB Error: " + updateError.message };
-            }
-
-            await sendParseFailedEmail(application.email, application.full_name);
-            return { success: true, status: 'parse_failed' };
-        }
-
         // 5. AI Scoring Only (OpenRouter Priority)
         atsScore = 0;
         atsSummary = "";
@@ -122,52 +106,58 @@ export async function scoreApplication(applicationId: string) {
 
         let aiSuccess = false;
 
-        for (const model of models) {
-            try {
-                console.log(`Attempting ATS Score with model: ${model}`);
-                const aiRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-                        "Content-Type": "application/json",
-                        "HTTP-Referer": "https://recruitai.com",
-                    },
-                    body: JSON.stringify({
-                        model: model,
-                        messages: [{ role: "user", content: prompt }],
-                        response_format: { type: "json_object" }
-                    }),
-                    signal: AbortSignal.timeout(45000) // 45s Timeout per model
-                });
+        // Try AI ONLY if parse succeeded
+        if (!parseFailed && resumeText.length >= 50) {
+            for (const model of models) {
+                try {
+                    console.log(`Attempting ATS Score with model: ${model}`);
+                    const aiRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                        method: "POST",
+                        headers: {
+                            "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                            "Content-Type": "application/json",
+                            "HTTP-Referer": "https://recruitai.com",
+                        },
+                        body: JSON.stringify({
+                            model: model,
+                            messages: [{ role: "user", content: prompt }],
+                            response_format: { type: "json_object" }
+                        }),
+                        signal: AbortSignal.timeout(45000) // 45s Timeout per model
+                    });
 
-                if (aiRes.ok) {
-                    const data = await aiRes.json();
-                    const content = data.choices?.[0]?.message?.content;
-                    if (!content) throw new Error("Empty AI Response");
+                    if (aiRes.ok) {
+                        const data = await aiRes.json();
+                        const content = data.choices?.[0]?.message?.content;
+                        if (!content) throw new Error("Empty AI Response");
 
-                    let result;
-                    try {
-                        result = JSON.parse(content);
-                    } catch (e) {
-                        // Try cleaning markdown code blocks if present
-                        const clean = content.replace(/```json/g, '').replace(/```/g, '').trim();
-                        result = JSON.parse(clean);
+                        let result;
+                        try {
+                            result = JSON.parse(content);
+                        } catch (e) {
+                            // Try cleaning markdown code blocks if present
+                            const clean = content.replace(/```json/g, '').replace(/```/g, '').trim();
+                            result = JSON.parse(clean);
+                        }
+
+                        if (typeof result.score === 'number') {
+                            atsScore = result.score;
+                            atsSummary = result.summary || "Evaluation completed.";
+                            aiSuccess = true;
+                            console.log(`Success with ${model}`);
+                            break; // Stop if success
+                        }
+                    } else {
+                        console.warn(`Model ${model} failed: ${aiRes.status}`);
                     }
-
-                    if (typeof result.score === 'number') {
-                        atsScore = result.score;
-                        atsSummary = result.summary || "Evaluation completed.";
-                        aiSuccess = true;
-                        console.log(`Success with ${model}`);
-                        break; // Stop if success
-                    }
-                } else {
-                    console.warn(`Model ${model} failed: ${aiRes.status}`);
+                } catch (err) {
+                    console.warn(`Error with ${model}:`, err);
                 }
-            } catch (err) {
-                console.warn(`Error with ${model}:`, err);
             }
         }
+
+        let fallbackUsed = false;
+        let parseStatus = aiSuccess ? 'success' : (parseFailed ? 'failed' : 'ai_failed');
 
         if (aiSuccess) {
             // Clamp Score
@@ -181,12 +171,20 @@ export async function scoreApplication(applicationId: string) {
                 finalStatus = application.status; // Preserve existing status
             }
         } else {
-            console.error("All AI models failed. Using fixed fallback.");
-            atsScore = 65;
-            atsSummary = "AI service unavailable. Application marked for manual review (Fallback Score).";
+            console.warn("Using Fallback Scoring Strategy (Parse Failed or AI Unavailable)");
+
+            // FALLBACK STRATEGY
+            // Use profile data from the joined query
+            const profile = application.profiles || {};
+            atsScore = calculateFallbackScore(profile);
+            atsSummary = "Estimated score (resume parse failed)";
+            fallbackUsed = true;
 
             const initialStages = ['APPLIED', 'applied', 'SUBMITTED', 'submitted', 'PARSE_FAILED', 'parse_failed'];
             if (initialStages.includes(application.status)) {
+                // If the estimated score is high enough, we can shortlist, but maybe safer to keep as SCORED_FALLBACK
+                // The requirement says "Allow application submission".
+                // We'll use SCORED_FALLBACK to indicate it needs attention / verify.
                 finalStatus = "SCORED_FALLBACK";
             } else {
                 finalStatus = application.status;
@@ -203,27 +201,59 @@ export async function scoreApplication(applicationId: string) {
             ats_summary: atsSummary,
             status: finalStatus,
             ats_score_locked: true,
-            ats_scored_at: new Date().toISOString()
+            ats_scored_at: new Date().toISOString(),
+            fallback_used: fallbackUsed,
+            parse_status: parseStatus
         }).eq("id", applicationId);
 
         // Send Success Email ONLY if valid status (skip for fallback usually, or send generic?)
-        // User didn't specify strict email rule for fallback, but safe to send Result Email if shortlisted/rejected.
-        // If SCORED_FALLBACK, maybe don't send "Shortlisted" email yet?
-        // Logic below sends based on status 'shortlisted' vs other.
-        // 'SCORED_FALLBACK' will trigger the 'else' branch -> "Application Update... decided not to proceed" which might be wrong for fallback (65).
-        // 65 is usually "Hold".
-        // I will SKIP email for Fallback to avoid sending "Rejected" prematurely.
         if (finalStatus !== 'SCORED_FALLBACK') {
             const normalizedStatus = finalStatus.toLowerCase();
             await sendResultEmail(application.email, application.full_name, normalizedStatus, atsScore);
         }
 
-        return { success: true, status: finalStatus, score: atsScore, summary: atsSummary };
+        return { success: true, status: finalStatus, score: atsScore, summary: atsSummary, fallback: fallbackUsed };
 
     } catch (err) {
         console.error("Critical ATS Error:", err);
         return { success: false, message: "Critical System Error" };
     }
+}
+
+function calculateFallbackScore(profile: any): number {
+    let score = 0;
+
+    // 1. Skills (if ≥3): +25
+    const skills = profile.skills || [];
+    // Handle if skills is string or array
+    const skillCount = Array.isArray(skills) ? skills.length : (typeof skills === 'string' ? skills.split(',').length : 0);
+    if (skillCount >= 3) score += 25;
+
+    // 2. Degree present: +20
+    // education is usually jsonb { degree, college, year }
+    const edu = profile.education || {};
+    if (edu.degree && edu.degree.trim().length > 0) score += 20;
+
+    // 3. Graduation Year valid: +15
+    if (edu.year && /^\d{4}$/.test(String(edu.year))) score += 15;
+
+    // 4. Preferred Job Roles selected: +20
+    const roles = profile.preferred_job_roles || profile.preferred_roles || [];
+    const roleCount = Array.isArray(roles) ? roles.length : (typeof roles === 'string' ? roles.split(',').length : 0);
+    if (roleCount > 0) score += 20;
+
+    // 5. College provided (selected or manual): +10
+    if (edu.college && edu.college.trim().length > 0) score += 10;
+
+    // 6. Location provided: +10
+    // Check fields on profile: address_city, address_state
+    if (profile.address_city || profile.address_state || profile.location) score += 10;
+
+    // Limits
+    if (score < 50) score = 50;
+    if (score > 100) score = 100;
+
+    return score;
 }
 
 async function sendParseFailedEmail(to: string, name: string) {

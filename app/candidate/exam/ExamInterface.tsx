@@ -5,6 +5,7 @@ import { startExam, submitExam } from "@/app/actions/exams";
 import { useRouter } from "next/navigation";
 import CodingEditor from "./CodingEditor";
 import DualCameraSetup from "@/components/candidate/DualCameraSetup";
+import ProctorLiveKit from "@/components/candidate/ProctorLiveKit";
 
 export default function ExamInterface({ exam, initialStatus }: { exam: any, initialStatus: string }) {
     const router = useRouter();
@@ -34,10 +35,9 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
     const [cameraVerified, setCameraVerified] = useState(false);
     const [micVerified, setMicVerified] = useState(false);
     const [mobileVerified, setMobileVerified] = useState(false); // [DUAL CAM]
-    const [stream, setStream] = useState<MediaStream | null>(null);
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-    const chunksRef = useRef<Blob[]>([]);
+
+    // LiveKit State
+    const [liveKitToken, setLiveKitToken] = useState<string>("");
 
     // --- PROCTORING CONFIG ---
     const config = exam.proctoring_config || { camera: true, mic: true, tab_switch: true, copy_paste: true, dual_camera: false };
@@ -49,16 +49,16 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    exam_assignment_id: exam.id,
-                    candidate_id: null,
-                    event_type: type,
+                    assignmentId: exam.id,
+                    candidateId: exam.candidate_id,
+                    eventType: type,
                     details
                 })
             });
         } catch (e) {
             console.error("Failed to log event:", e);
         }
-    }, [exam.id]);
+    }, [exam.id, exam.candidate_id]);
 
     // --- INITIALIZATION ---
     useEffect(() => {
@@ -73,39 +73,13 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
             } else {
                 setTimeLeft(remaining);
                 fetchQuestions();
-                if (!stream) {
-                    performSystemCheck().then(s => {
-                        if (s) {
-                            startRecording(s);
-                        }
-                    });
+                // If we are refreshing page in-progress, we need the token again!
+                if (!liveKitToken) {
+                    performSystemCheck();
                 }
             }
         }
     }, [status, exam.started_at]);
-
-    // Attach stream to video element whenever stream changes
-    useEffect(() => {
-        if (videoRef.current && stream) {
-            videoRef.current.srcObject = stream;
-        }
-    }, [stream, status]);
-
-    const startRecording = (mediaStream: MediaStream) => {
-        try {
-            const recorder = new MediaRecorder(mediaStream, { mimeType: 'video/webm' });
-            recorder.ondataavailable = (e) => {
-                if (e.data.size > 0) {
-                    chunksRef.current.push(e.data);
-                }
-            };
-            recorder.start(1000); // 1 sec chunks
-            mediaRecorderRef.current = recorder;
-            console.log("Recording started");
-        } catch (e) {
-            console.error("Failed to start recorder:", e);
-        }
-    };
 
     const fetchQuestions = async () => {
         setLoading(true);
@@ -228,35 +202,57 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
     const performSystemCheck = async () => {
         setError("");
         try {
-            const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            setStream(mediaStream);
+            // 1. Check Permissions locally first
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            stream.getTracks().forEach(t => t.stop()); // Stop local check stream
+
+            // 2. Fetch LiveKit Token
+            const res = await fetch('/api/proctor/livekit-token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    roomName: `exam-${exam.id}`,
+                    participantName: exam.application?.full_name || `Candidate-${exam.candidate_id}`,
+                    role: 'publisher'
+                })
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Failed to connect to proctoring server");
+
+            setLiveKitToken(data.token);
             setCameraVerified(true);
             setMicVerified(true);
-            return mediaStream;
-        } catch (err) {
-            setError("Camera and Microphone access is REQUIRED.");
+
+            return true;
+        } catch (err: any) {
+            console.error("System Check Error:", err);
+            setError("Camera/Mic permission denied or server error. Please allow access.");
             setCameraVerified(false);
             setMicVerified(false);
-            return null;
+            return false;
         }
     };
 
     const handleStart = async () => {
         const needsCam = config.camera || config.mic;
-        const needsMobile = config.dual_camera;
+        // CONSTANTLY MANDATORY as per new requirement
+        const needsMobile = true;
 
-        if (needsCam && (!cameraVerified || !stream)) {
+        if (needsCam && (!cameraVerified || !liveKitToken)) {
             setError("Please complete the Laptop System Check.");
             return;
         }
 
         if (needsMobile && !mobileVerified) {
-            setError("Please verify the Mobile 'Third Eye' connection.");
+            setError("MANDATORY: Mobile 'Third Eye' connection is required to start.");
             return;
         }
 
         try {
-            await document.documentElement.requestFullscreen();
+            if (document.documentElement.requestFullscreen) {
+                await document.documentElement.requestFullscreen();
+            }
         } catch (e) {
             console.error(e);
             setError("Fullscreen mode is mandatory. Please confirm execution.");
@@ -264,7 +260,6 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
         }
 
         setLoading(true);
-        if (stream) startRecording(stream);
 
         try {
             const res = await startExam(exam.id);
@@ -287,36 +282,14 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
         }
     };
 
-    const uploadRecording = async (blob: Blob) => {
-        const formData = new FormData();
-        formData.append('video', blob, 'recording.webm');
-        formData.append('examId', exam.id);
-
-        try {
-            await fetch('/api/proctor/upload', {
-                method: 'POST',
-                body: formData
-            });
-        } catch (e) {
-            console.error("Upload failed", e);
-        }
-    };
 
     const handleSubmit = useCallback(async (auto = false) => {
         if (submitting) return;
         setSubmitting(true);
 
-        if (stream) stream.getTracks().forEach(t => t.stop());
         if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
 
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-            mediaRecorderRef.current.stop();
-        }
-
         try {
-            const finalBlob = new Blob(chunksRef.current, { type: 'video/webm' });
-            await uploadRecording(finalBlob);
-
             const proctoringData = {
                 tab_switches: tabSwitches,
                 fullscreen_exits: fullscreenExits + (auto ? 1 : 0),
@@ -331,7 +304,7 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
         } finally {
             setSubmitting(false);
         }
-    }, [submitting, stream, tabSwitches, fullscreenExits, answers, exam.id, router]);
+    }, [submitting, tabSwitches, fullscreenExits, answers, exam.id, router]);
 
     const formatTime = (s: number) => {
         const m = Math.floor(s / 60);
@@ -367,8 +340,16 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
                             <div className="flex flex-col items-center gap-4 p-4 border rounded-lg bg-gray-50">
                                 <h4 className="font-bold text-gray-700">1. Laptop Camera Check</h4>
                                 <div className="w-64 h-48 bg-black rounded-lg overflow-hidden relative border-4 border-gray-200 flex items-center justify-center shadow-inner">
-                                    {stream ? (
-                                        <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover transform scale-x-[-1]" />
+                                    {liveKitToken ? (
+                                        <div className="w-full h-full">
+                                            {/* Preview in Setup Phase */}
+                                            <ProctorLiveKit
+                                                token={liveKitToken}
+                                                serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL || ""}
+                                                onConnect={() => setCameraVerified(true)}
+                                                onDisconnect={() => setCameraVerified(false)}
+                                            />
+                                        </div>
                                     ) : (
                                         <div className="text-gray-500 text-sm flex flex-col items-center">
                                             <span>Camera Preview</span>
@@ -376,30 +357,28 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
                                     )}
                                 </div>
 
-                                {!cameraVerified ? (
+                                {!liveKitToken ? (
                                     <button onClick={performSystemCheck} className="px-6 py-2 bg-gray-800 text-white rounded hover:bg-black transition text-sm">
                                         Activate Laptop Camera
                                     </button>
                                 ) : (
                                     <div className="text-green-600 font-bold flex items-center gap-2 text-sm">
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                                        Laptop Verified
+                                        System Ready
                                     </div>
                                 )}
                             </div>
                         )}
 
-                        {/* 2. MOBILE CHECK (Dual Cam) */}
-                        {isDualCam && (
-                            <div className="flex flex-col items-center gap-4 p-4 border rounded-lg bg-gray-50">
-                                <h4 className="font-bold text-gray-700">2. Mobile "Third Eye" Check</h4>
-                                <DualCameraSetup
-                                    examId={exam.id}
-                                    userId="candidate"
-                                    onReady={(ready) => setMobileVerified(ready)}
-                                />
-                            </div>
-                        )}
+                        {/* 2. MOBILE CHECK (MANDATORY) */}
+                        <div className="flex flex-col items-center gap-4 p-4 border rounded-lg bg-gray-50">
+                            <h4 className="font-bold text-gray-700">2. Mobile "Third Eye" Check (Required)</h4>
+                            <DualCameraSetup
+                                examId={exam.id}
+                                userId="candidate"
+                                onReady={(ready) => setMobileVerified(ready)}
+                            />
+                        </div>
                     </div>
 
                     {error && <div className="text-red-600 bg-red-50 p-3 rounded mb-6 max-w-xl mx-auto border border-red-200">{error}</div>}
@@ -427,12 +406,12 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
                             onClick={handleStart}
                             disabled={
                                 ((config.camera || config.mic) && !cameraVerified) ||
-                                (isDualCam && !mobileVerified) ||
+                                !mobileVerified ||
                                 loading ||
                                 (exam.scheduled_start_time && new Date(exam.scheduled_start_time).getTime() - new Date().getTime() > 15 * 60 * 1000)
                             }
                             className={`w-full py-4 text-lg font-bold rounded-xl text-white transition shadow-lg flex items-center justify-center gap-2
-                                ${(((config.camera || config.mic) && !cameraVerified) || (isDualCam && !mobileVerified) || loading || (exam.scheduled_start_time && new Date(exam.scheduled_start_time).getTime() - new Date().getTime() > 15 * 60 * 1000))
+                                ${(((config.camera || config.mic) && !cameraVerified) || !mobileVerified || loading || (exam.scheduled_start_time && new Date(exam.scheduled_start_time).getTime() - new Date().getTime() > 15 * 60 * 1000))
                                     ? 'bg-gray-300 cursor-not-allowed shadow-none'
                                     : 'bg-green-600 hover:bg-green-700 transform hover:-translate-y-1'}
                             `}
@@ -440,7 +419,7 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
                             {loading ? 'Starting...' : 'Start Exam'}
                         </button>
                         <p className="text-xs text-gray-400 mt-2">
-                            Ensuring a fair exam environment.
+                            By starting, you agree to be recorded via LiveKit Proctoring.
                         </p>
                     </div>
                 </div>
@@ -454,17 +433,66 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
         const currentQuestion = displayQuestions[currentQuestionIndex];
 
         return (
-            <div className="min-h-screen bg-gray-100 flex flex-col">
+            <div className="min-h-screen bg-gray-100 flex flex-col relative">
+                {/* PROCTORING OVERLAY - Blocking if camera disconnected */}
+                {(status === 'in_progress' && (config.camera || config.mic) && !cameraVerified) && (
+                    <div className="fixed inset-0 bg-black/95 z-[999] flex flex-col items-center justify-center text-white text-center p-8">
+                        <div className="animate-pulse mb-6 text-red-500">
+                            <svg className="w-20 h-20 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+                        </div>
+                        <h2 className="text-4xl font-bold mb-4">Proctoring Disconnected</h2>
+                        <p className="text-xl text-gray-300 mb-8 max-w-lg">
+                            Your camera signal was lost. The exam is paused until connection is restored.
+                            <br /><br />
+                            Attempting to reconnect...
+                        </p>
+                        {/* Hidden Proctor Component to Keep Trying */}
+                        <div className="opacity-0 pointer-events-none w-1 h-1">
+                            <ProctorLiveKit
+                                token={liveKitToken}
+                                serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL || ""}
+                                onConnect={() => {
+                                    setCameraVerified(true);
+                                    logEvent("CAMERA_CONNECTED");
+                                }}
+                                onDisconnect={() => {
+                                    // already blocked
+                                    logEvent("CAMERA_DISCONNECTED");
+                                }}
+                            />
+                        </div>
+                        <button
+                            onClick={performSystemCheck}
+                            className="px-6 py-3 bg-blue-600 rounded font-bold hover:bg-blue-700"
+                        >
+                            Reconnect Manually
+                        </button>
+                    </div>
+                )}
+
                 {/* Top Bar */}
                 <div className="bg-white shadow-sm border-b px-6 py-3 flex justify-between items-center sticky top-0 z-50">
                     <div className="flex items-center gap-4">
                         <h2 className="font-bold text-gray-800 truncate max-w-xs">{exam.exams.title}</h2>
                         {/* Live Cam Mini */}
-                        {stream && (
-                            <div className="w-16 h-12 bg-black rounded overflow-hidden border border-gray-300 shadow-inner">
-                                <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover transform scale-x-[-1]" />
+                        <div className="w-24 h-16 bg-black rounded overflow-hidden border border-gray-300 shadow-inner relative group">
+                            {/* Persistent Proctor Instance */}
+                            {liveKitToken && (
+                                <ProctorLiveKit
+                                    token={liveKitToken}
+                                    serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL || ""}
+                                    onConnect={() => {
+                                        setCameraVerified(true);
+                                    }}
+                                    onDisconnect={() => {
+                                        setCameraVerified(false);
+                                    }}
+                                />
+                            )}
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-[10px] text-white font-bold pointer-events-none">
+                                LIVE
                             </div>
-                        )}
+                        </div>
                         <div className="flex gap-2 text-xs">
                             {tabSwitches > 0 && <span className="text-orange-600 font-semibold">⚠ Tabs: {tabSwitches}</span>}
                             {fullscreenExits > 0 && <span className="text-red-600 font-semibold">⚠ Fullscreen: {fullscreenExits}</span>}
@@ -634,7 +662,11 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
                 </div>
 
                 {/* Fullscreen Violation Overlay */}
-                {fullscreenExits > 0 && fullscreenExits < 3 && status === 'in_progress' && (
+                {fullscreenExits > 0 && fullscreenExits < 3 && !cameraVerified && (
+                    null
+                )}
+
+                {fullscreenExits > 0 && fullscreenExits < 3 && cameraVerified && (
                     <div className="fixed inset-0 bg-black/80 z-[100] flex flex-col items-center justify-center text-white text-center p-8 backdrop-blur-sm">
                         <div className="bg-gray-900 p-10 rounded-2xl border border-red-500/50 shadow-2xl max-w-lg">
                             <h2 className="text-4xl font-bold text-red-500 mb-6">WARNING</h2>

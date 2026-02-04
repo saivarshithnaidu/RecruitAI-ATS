@@ -41,15 +41,22 @@ export async function POST(req: NextRequest) {
             // Generate a unique token for tracking
             const token = crypto.randomUUID();
             const personalPortalLink = `${process.env.NEXTAUTH_URL}/invite?token=${token}`;
-            const personalMessage = message.replace(/{{portal_link}}/g, personalPortalLink);
+            // Name inference from email if not available (simplistic)
+            const namePart = cleanEmail.split('@')[0];
+            // Format name: 'john.doe' -> 'John'
+            const firstName = namePart.split(/[._]/)[0];
+            const properName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
 
+
+            let personalMessage = message
+                .replace(/{{portal_link}}/g, personalPortalLink)
+                .replace(/{{portal_url}}/g, personalPortalLink)
+                .replace(/{{first_name}}/g, properName);
+
+            // Simple transactional look
             const finalHtml = `
-                <div style="font-family: sans-serif; padding: 20px;">
-                    <p>${personalMessage.replace(/\n/g, '<br>')}</p>
-                    <br/>
-                    <p style="font-size: 12px; color: #666;">
-                        You are receiving this email because you were invited to apply at RecruitAI.
-                    </p>
+                <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+                    ${personalMessage.replace(/\n/g, '<br>')}
                 </div>
             `;
 

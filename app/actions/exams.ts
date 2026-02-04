@@ -26,33 +26,27 @@ export async function createExam(data: ExamInput) {
 
     try {
         console.log(`[CreateExam] Starting for role: ${data.role}`);
-
-        // 1. Generate Sections (Synchronous)
         let sections: any[] = [];
-        try {
-            // Define topics based on Role
-            const roleKey = data.role.toLowerCase();
-            let topics: string[] = ['Aptitude', 'Verbal Reasoning', 'Coding Logic']; // Defaults
 
-            if (roleKey.includes('frontend') || roleKey.includes('ui')) {
-                topics = ['Aptitude', 'Verbal Reasoning', 'HTML/CSS', 'JavaScript/React', 'Frontend Coding'];
-            } else if (roleKey.includes('backend') || roleKey.includes('api')) {
-                topics = ['Aptitude', 'Verbal Reasoning', 'Database/SQL', 'Node.js/API', 'Backend Coding'];
-            } else if (roleKey.includes('full') || roleKey.includes('stack')) {
-                topics = ['Aptitude', 'Verbal Reasoning', 'Frontend Basics', 'Backend Logic', 'Full Stack Coding'];
-            } else if (roleKey.includes('data') || roleKey.includes('analyst')) {
-                topics = ['Aptitude', 'Verbal Reasoning', 'Statistics', 'SQL/Data', 'Python Coding'];
-            }
+        // Define topics based on Role (Technical ONLY - Aptitude/Verbal are hardcoded in AI strict prompt)
+        const roleKey = data.role.toLowerCase();
+        let topics: string[] = ['Coding Logic', 'Technical Concepts']; // Defaults
 
-            console.log(`[CreateExam] Generating for Role: ${data.role}, Topics: ${topics.join(', ')}`);
-            sections = await generateExamPaper(data.role, topics, data.difficulty);
+        if (roleKey.includes('frontend') || roleKey.includes('ui')) {
+            topics = ['HTML/CSS', 'JavaScript', 'React', 'Frontend Architecture', 'Web Performance'];
+        } else if (roleKey.includes('backend') || roleKey.includes('api')) {
+            topics = ['Database Design', 'SQL', 'Node.js', 'API Security', 'Server Logic', 'System Design'];
+        } else if (roleKey.includes('full') || roleKey.includes('stack')) {
+            topics = ['Frontend Basics', 'Backend Logic', 'Database', 'API Design', 'DevOps Basics'];
+        } else if (roleKey.includes('data') || roleKey.includes('analyst')) {
+            topics = ['Statistics', 'SQL', 'Python Data Science', 'Machine Learning Basics', 'Data Visualization'];
+        }
 
-            if (!sections || sections.length === 0) {
-                throw new Error("No sections generated.");
-            }
-        } catch (aiError: any) {
-            console.error("AI Generation Failed:", aiError);
-            return { error: "Exam generation failed. Please retry." };
+        console.log(`[CreateExam] Generating for Role: ${data.role}, Topics: ${topics.join(', ')}`);
+        sections = await generateExamPaper(data.role, topics, data.difficulty);
+
+        if (!sections || sections.length === 0) {
+            throw new Error("No sections generated.");
         }
 
         // 2. Resolve Creator UUID
@@ -409,6 +403,14 @@ export async function startExam(assignmentId: string) {
             .eq('id', assignmentId);
 
         if (error) throw error;
+
+        // Initialize Proctoring Session
+        await supabaseAdmin.from('exam_proctoring_sessions').upsert({
+            assignment_id: assignmentId,
+            status: 'active',
+            last_heartbeat: new Date().toISOString(),
+            // Default values for others are handled by DB or explicit logic
+        });
     }
 
     // 1. Check for New JSON Structure (3 Sections)
@@ -537,20 +539,22 @@ export async function submitExam(assignmentId: string, answers: Record<string, s
         });
     }
 
-    // Pass/Fail Logic
+    // Pass/Fail Logic -> CHANGED to Manual Review
     // @ts-ignore
     const passMark = assignment.exams?.pass_mark || 0;
-    const resultStatus = totalScore >= passMark ? 'passed' : 'failed';
-    const appStatus = totalScore >= passMark ? 'EXAM_PASSED' : 'EXAM_FAILED';
 
-    console.log(`Exam Result: Score=${totalScore}, PassMark=${passMark}, Status=${resultStatus}`);
+    // We still calculate MCQ score for Admin reference
+    const resultStatus = 'submitted';
+    const appStatus = 'EXAM_SUBMITTED';
+
+    console.log(`Exam Submitted: MCQ Score=${totalScore} (To be reviewed)`);
 
     // Update assignment
     const { error: updateError } = await supabaseAdmin
         .from('exam_assignments')
         .update({
             status: resultStatus,
-            score: totalScore,
+            score: totalScore, // Store internal MCQ score
             submitted_at: new Date().toISOString(),
             answers: answers
             // proctoring_data column might not exist, so we log it separately below
@@ -569,8 +573,6 @@ export async function submitExam(assignmentId: string, answers: Record<string, s
         });
     }
 
-    if (updateError) throw updateError;
-
     // Update Application Status
     const { data: user } = await supabaseAdmin.auth.admin.getUserById(session.user.id);
     if (user && user.user) {
@@ -580,31 +582,8 @@ export async function submitExam(assignmentId: string, answers: Record<string, s
             .eq('email', user.user.email);
     }
 
-    // SEND RESULT EMAIL
-    try {
-        const { sendEmail } = await import("@/lib/email");
-        const { EmailTemplates } = await import("@/lib/email-templates");
-
-        const firstName = session.user.name?.split(' ')[0] || "Candidate";
-        // @ts-ignore
-        const examTitle = assignment.exams?.title || "Assessment";
-
-        if (user.user?.email) {
-            let template;
-            if (resultStatus === 'passed') {
-                template = EmailTemplates.examPassed(firstName, examTitle);
-            } else {
-                template = EmailTemplates.examFailed(firstName, examTitle);
-            }
-
-            await sendEmail({ to: user.user.email, subject: template.subject, html: template.html });
-        }
-    } catch (e) {
-        console.error("Failed to send exam result email:", e);
-    }
-
     revalidatePath('/candidate/dashboard');
-    return { success: true, score: totalScore, status: resultStatus };
+    return { success: true, score: totalScore, status: resultStatus, message: "Exam submitted for review." };
 }
 
 export async function getActiveExamSessions() {

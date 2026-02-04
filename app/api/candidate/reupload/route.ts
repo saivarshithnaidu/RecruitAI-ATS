@@ -74,7 +74,9 @@ export async function POST(request: Request) {
                 status: 'submitted',
                 ats_score: 0,        // Reset to 0
                 ats_score_locked: false, // Ensure unlocked
-                ats_summary: null
+                ats_summary: null,
+                fallback_used: false,
+                parse_status: null
             })
             .eq('id', appId);
 

@@ -1,163 +1,115 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { supabaseClient } from '@/lib/supabaseClient'; // Ensure client usage
-import { WebRTCSignaling } from '@/lib/webrtc-signaling';
+import { useEffect, useState } from 'react';
+import { LiveKitRoom, VideoTrack, useTracks, useRoomContext, AudioTrack } from '@livekit/components-react';
+import { Track, RoomEvent } from 'livekit-client';
+import "@livekit/components-styles";
 
 interface LiveMonitorProps {
     examId: string;
-    assignmentId: string;
-    candidateId: string; // auth user id
+    candidateId: string;
+    candidateName?: string;
 }
 
-export default function LiveMonitorClient({ examId, assignmentId, candidateId }: LiveMonitorProps) {
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const peerRef = useRef<RTCPeerConnection | null>(null);
-    const signalingRef = useRef<WebRTCSignaling | null>(null);
-    const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
-    const [dbSignal, setDbSignal] = useState<boolean>(false);
+export default function LiveMonitorClient({ examId, candidateId, candidateName }: LiveMonitorProps) {
+    const [token, setToken] = useState("");
+    const [error, setError] = useState("");
 
     useEffect(() => {
-        // Initial Fetch
-        const fetchDeepStatus = async () => {
-            const { data } = await supabaseClient
-                .from('exam_proctoring_sessions')
-                .select('mobile_connected')
-                .eq('assignment_id', assignmentId)
-                .single();
-            if (data) setDbSignal(data.mobile_connected);
+        const fetchToken = async () => {
+            try {
+                const res = await fetch('/api/proctor/livekit-token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        roomName: `exam-${examId}`,
+                        participantName: `Admin-Viewer`,
+                        role: 'subscriber'
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error);
+                setToken(data.token);
+            } catch (e: any) {
+                setError(e.message);
+            }
         };
-        fetchDeepStatus();
-
-        // Realtime Subscription
-        const channel = supabaseClient.channel(`proctor-admin-${assignmentId}`)
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'exam_proctoring_sessions',
-                    filter: `assignment_id=eq.${assignmentId}`
-                },
-                (payload: any) => {
-                    const newVal = payload.new;
-                    if (newVal) setDbSignal(newVal.mobile_connected);
-                }
-            )
-            .subscribe();
-
-        return () => {
-            supabaseClient.removeChannel(channel);
-        };
-    }, [assignmentId]);
-
-    useEffect(() => {
-        const channel = supabaseClient.channel(`proctor-${examId}`);
-        const userId = 'admin-viewer'; // Arbitrary ID for admin
-
-        const signaling = new WebRTCSignaling(channel, userId, async (msg) => {
-            console.log("Admin Received:", msg.type, msg);
-
-            if (msg.type === 'ready' && msg.role === 'viewer') {
-                // Mobile just joined/viewing, potentially we are the host?
-                // Actually, looking at ConnectContent, it waits for 'host' to say ready. 
-                // We should announce ourselves as 'host'.
-            }
-
-            if (msg.type === 'offer') {
-                await handleOffer(msg.senderId, msg.sdp, signaling);
-            }
-
-            if (msg.type === 'candidate' && peerRef.current) {
-                await peerRef.current.addIceCandidate(new RTCIceCandidate(msg.candidate));
-            }
-        });
-
-        // Announce presence as HOST
-        channel.subscribe((status) => {
-            if (status === 'SUBSCRIBED') {
-                setStatus('connecting');
-                signaling.sendReady('host');
-            }
-        });
-
-        signalingRef.current = signaling;
-
-        return () => {
-            channel.unsubscribe();
-            if (peerRef.current) peerRef.current.close();
-            // Stop tracks if any
-        };
+        fetchToken();
     }, [examId]);
 
-    const handleOffer = async (senderId: string, sdp: RTCSessionDescriptionInit, signaling: WebRTCSignaling) => {
-        console.log("Handling Offer from", senderId);
-
-        if (peerRef.current) peerRef.current.close();
-
-        const pc = new RTCPeerConnection({
-            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-        });
-
-        pc.onicecandidate = (event) => {
-            if (event.candidate) {
-                signaling.sendCandidate(senderId, event.candidate);
-            }
-        };
-
-        pc.ontrack = (event) => {
-            console.log("Received Track", event.streams);
-            if (videoRef.current && event.streams[0]) {
-                videoRef.current.srcObject = event.streams[0];
-                setStatus('connected');
-            }
-        };
-
-        await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-
-        signaling.sendAnswer(senderId, answer);
-        peerRef.current = pc;
-    };
+    if (error) return <div className="text-red-500 text-xs p-2">Error: {error}</div>;
+    if (!token) return <div className="text-gray-400 text-xs p-2 animate-pulse">Connecting...</div>;
 
     return (
-        <div className="relative w-full h-full bg-black rounded-xl overflow-hidden flex items-center justify-center">
-            {status !== 'connected' && (
-                <div className="absolute inset-0 flex items-center justify-center text-gray-500 z-10">
-                    <div className="text-center">
-                        <p className="animate-pulse mb-2">{dbSignal ? 'Mobile is Online. Waiting for Video...' : 'Mobile is Offline.'}</p>
-                        <p className="text-xs">Ensure candidate has scanned QR code.</p>
-                    </div>
+        <LiveKitRoom
+            token={token}
+            serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
+            connect={true}
+            video={false} // Admin doesn't publish
+            audio={false}
+            data-lk-theme="default"
+            className="w-full h-full bg-black relative rounded overflow-hidden group"
+        >
+            <CandidateStreamView candidateId={candidateId} candidateName={candidateName} />
+        </LiveKitRoom>
+    );
+}
+
+function CandidateStreamView({ candidateId, candidateName }: { candidateId?: string, candidateName?: string }) {
+    // Subscribe to all camera tracks
+    const tracks = useTracks([Track.Source.Camera, Track.Source.Microphone]);
+
+    // Filter for specific candidate if needed, relying on identity?
+    // actually room is per exam, but tokens create unique identities.
+    // If room is `exam-{examId}`, multiple candidates might be in it?
+    // Wait, implementation plan said 1 room per exam?
+    // "Candidate connects to room `exam-{examId}`" -> Yes.
+    // So all candidates for that exam are in this room.
+    // We need to find the specific candidate's track.
+
+    // Strategy: Candidate identity is likely their name or `Candidate-{id}`.
+    // For now, let's show ALL tracks or filter by name if we can.
+    // If `candidateId` is passed, we filter.
+
+    const specificTracks = tracks.filter(t => {
+        if (!candidateId) return true;
+        // Check identity
+        return t.participant.identity?.includes(candidateId) || t.participant.identity === candidateName;
+        // Note: identity depends on token generation.
+        // In token route: `participantName: ... || Candidate-${userId}`
+    });
+
+    if (specificTracks.length === 0) {
+        return (
+            <div className="flex items-center justify-center h-full text-gray-500 text-xs text-center p-4">
+                Waiting for stream...<br />
+                ({candidateName})
+            </div>
+        );
+    }
+
+    // Prioritize Video
+    const videoTrack = specificTracks.find(t => t.source === Track.Source.Camera);
+    const audioTrack = specificTracks.find(t => t.source === Track.Source.Microphone);
+
+    return (
+        <div className="relative w-full h-full">
+            {videoTrack ? (
+                <VideoTrack
+                    trackRef={videoTrack}
+                    className="w-full h-full object-contain"
+                />
+            ) : (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-900 text-white text-xs">
+                    Audio Only
                 </div>
             )}
 
-            <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted // Mute to avoid feedback loop if testing locally
-                className="w-full h-full object-contain"
-            />
+            {audioTrack && <AudioTrack trackRef={audioTrack} />}
 
-            <div className="absolute top-2 left-2 z-20 flex flex-col gap-1">
-                <div className="bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow">
-                    MOBILE (360°)
-                </div>
-                {dbSignal ? (
-                    <div className="bg-green-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
-                        SIGNAL LIVE
-                    </div>
-                ) : (
-                    <div className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow">
-                        NO SIGNAL
-                    </div>
-                )}
-            </div>
-
-            <div className="absolute bottom-2 right-2 z-20">
-                <div className={`w-3 h-3 rounded-full ${status === 'connected' ? 'bg-green-500' : 'bg-red-500'} border-2 border-white`} title={status === 'connected' ? 'Video Connected' : 'Video Disconnected'}></div>
+            <div className="absolute top-2 left-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded">
+                {candidateName || "Candidate"}
+                {audioTrack && <span className="ml-2 text-green-400">🎤</span>}
             </div>
         </div>
     );

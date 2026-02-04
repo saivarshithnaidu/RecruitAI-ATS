@@ -23,9 +23,10 @@ export async function POST(req: Request) {
         const newStatus = status.toUpperCase();
 
         // 2. Fetch Application First (to get email)
+        // 2. Fetch Application First (to get email)
         const { data: application, error: fetchError } = await supabaseAdmin
             .from('applications')
-            .select('email, full_name, role_applied')
+            .select('email, full_name')
             .eq('id', applicationId)
             .single();
 
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
         // 3. Update Status
         const { error } = await supabaseAdmin
             .from('applications')
-            .update({ status: newStatus, updated_at: new Date().toISOString() })
+            .update({ status: newStatus })
             .eq('id', applicationId);
 
         if (error) throw error;
@@ -43,7 +44,7 @@ export async function POST(req: Request) {
         try {
             const { EmailTemplates } = await import("@/lib/email-templates");
             const firstName = application.full_name.split(' ')[0];
-            const role = application.role_applied || "Position";
+            const role = "General Application"; // Column 'role_applied' does not exist
 
             if (newStatus === 'SHORTLISTED') {
                 const template = EmailTemplates.applicationShortlisted(firstName, role);

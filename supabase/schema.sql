@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS applications (
     ats_score integer,
     ats_summary text,
     status text DEFAULT 'submitted',
+    fallback_used boolean DEFAULT false,
+    parse_status text,
     created_at timestamp
     with
         time zone DEFAULT now()

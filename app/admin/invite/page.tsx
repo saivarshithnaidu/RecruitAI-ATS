@@ -6,9 +6,9 @@ import { useRouter } from 'next/navigation';
 export default function InviteCandidatesPage() {
     const router = useRouter();
     const [emails, setEmails] = useState('');
-    const [subject, setSubject] = useState('Invitation to Apply at RecruitAI');
+    const [subject, setSubject] = useState("Application invitation – RecruitAI");
     const [message, setMessage] = useState(
-        `Dear Candidate,\n\nWe were impressed by your profile and would like to invite you to apply for a position at RecruitAI.\n\nPlease visit our career portal to submit your application:\n{{portal_link}}\n\nWe look forward to hearing from you.\n\nBest regards,\nRecruitAI Hiring Team`
+        `Hi {{first_name}},\n\nYou’re invited to apply for an opportunity through RecruitAI, our hiring evaluation platform.\n\nApplication link:\n{{portal_url}}\n\nWhat to do:\n1. Open the link and create your account\n2. Complete your profile and upload your resume (DOC/DOCX)\n3. Verify your email and phone number\n4. Submit your application\n\nAfter submission:\n• Your resume will be evaluated automatically\n• Shortlisted candidates will receive an online assessment\n• Exam details will be shared only if you qualify\n\nImportant notes:\n• Use a laptop/desktop for exams\n• Ensure camera access is available during assessments\n• The application takes about 5–10 minutes to complete\n\nIf you face any issues, contact us at:\nsupport@recruitaitech.in\n\nRegards,\nRecruitAI Team\nhttps://www.recruitaitech.in`
     );
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState<{ type: 'success' | 'error', message: string, details?: any } | null>(null);
@@ -126,13 +126,69 @@ export default function InviteCandidatesPage() {
                         />
                     </div>
 
+                    {/* Email Templates Section */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Email Templates (Copy & Paste)
+                        </label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            {[
+                                {
+                                    title: "Standard Invite",
+                                    subject: "Application invitation – RecruitAI",
+                                    body: `Hi {{first_name}},\n\nYou’re invited to apply for an opportunity through RecruitAI, our hiring evaluation platform.\n\nApplication link:\n{{portal_url}}\n\nWhat to do:\n1. Open the link and create your account\n2. Complete your profile and upload your resume (DOC/DOCX)\n3. Verify your email and phone number\n4. Submit your application\n\nAfter submission:\n• Your resume will be evaluated automatically\n• Shortlisted candidates will receive an online assessment\n• Exam details will be shared only if you qualify\n\nImportant notes:\n• Use a laptop/desktop for exams\n• Ensure camera access is available during assessments\n• The application takes about 5–10 minutes to complete\n\nIf you face any issues, contact us at:\nsupport@recruitaitech.in\n\nRegards,\nRecruitAI Team\nhttps://www.recruitaitech.in`
+                                },
+                                {
+                                    title: "Urgent / Fast Track",
+                                    subject: "Urgent: Complete your application – RecruitAI",
+                                    body: `Hi {{first_name}},\n\nWe are fast-tracking applications for the current opening at RecruitAI.\n\nPlease complete your application immediately using the link below:\n\nLink: {{portal_url}}\n\nThis process will take less than 10 minutes.\n\nSteps:\n1. Register & Upload Resume\n2. Verify Email/Phone\n3. Submit\n\nNote: Candidates who apply today will be prioritized for assessment.\n\nRegards,\nRecruitAI Team`
+                                },
+                                {
+                                    title: "Re-engagement / Reminder",
+                                    subject: "Reminder: Pending Application – RecruitAI",
+                                    body: `Hi {{first_name}},\n\nWe noticed you haven't completed your application process yet.\n\nTo be considered for the current round of hiring, please finish your submission here:\n\n{{portal_url}}\n\nIf you have already applied, please ignore this email.\n\nRegards,\nRecruitAI Team`
+                                }
+                            ].map((template, idx) => (
+                                <div key={idx} className="border rounded-lg p-4 bg-gray-50 hover:bg-white hover:shadow-md transition-all">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <h3 className="font-bold text-sm text-gray-900">{template.title}</h3>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(template.body);
+                                                setSubject(template.subject);
+                                                // Minimal toast using simple alert or state? User asked for toast "Template copied"
+                                                // I'll stick to a simple alert or reuse status state if possible, but alert is "zero learning curve" validation.
+                                                // Better: show a temporary text.
+                                                const btn = document.getElementById(`copy-btn-${idx}`);
+                                                if (btn) {
+                                                    const origText = btn.innerText;
+                                                    btn.innerText = "Copied!";
+                                                    setTimeout(() => btn.innerText = origText, 1500);
+                                                }
+                                            }}
+                                            id={`copy-btn-${idx}`}
+                                            className="text-xs bg-white border border-gray-300 px-2 py-1 rounded text-gray-600 hover:text-indigo-600 hover:border-indigo-600 font-medium"
+                                        >
+                                            Copy Body
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mb-2 truncate"><span className="font-medium">Subject:</span> {template.subject}</p>
+                                    <div className="text-[10px] text-gray-400 bg-white p-2 rounded border h-20 overflow-y-auto whitespace-pre-wrap font-mono">
+                                        {template.body}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
                     {/* Message Input */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             Message Body
                         </label>
-                        <div className="bg-yellow-50 p-3 rounded text-xs text-yellow-800 mb-2">
-                            Variable: <strong>{`{{portal_link}}`}</strong> will be replaced with the registration link.
+                        <div className="bg-blue-50 p-3 rounded text-xs text-blue-800 mb-2">
+                            💡 <strong>Tip:</strong> Copy a template from above and paste it here. Variables like <code>{`{{portal_url}}`}</code> are replaced automatically.
                         </div>
                         <textarea
                             rows={10}

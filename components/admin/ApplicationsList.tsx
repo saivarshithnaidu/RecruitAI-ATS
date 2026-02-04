@@ -22,8 +22,9 @@ interface Application {
         sent_at: string;
         clicked_at: string;
         exam_status: string;
+        assignment_id?: string;
     };
-}
+};
 
 interface ApplicationsListProps {
     applications: Application[];
@@ -98,9 +99,17 @@ export default function ApplicationsList({ applications, onScore, onUpdateStatus
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         {(app.ats_score > 0) ? (
                                             <div>
-                                                <span className={`text-lg font-bold ${app.ats_score >= 70 ? 'text-green-600' : 'text-orange-500'}`}>
-                                                    {app.ats_score}%
-                                                </span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`text-lg font-bold ${app.ats_score >= 70 ? 'text-green-600' : 'text-orange-500'}`}>
+                                                        {app.ats_score}%
+                                                    </span>
+                                                    {/* @ts-ignore */}
+                                                    {app.fallback_used && (
+                                                        <span className="bg-yellow-100 text-yellow-800 text-[10px] px-1.5 py-0.5 rounded border border-yellow-200" title="Estimated score (resume parse failed)">
+                                                            Estimated
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         ) : (
                                             <span className="text-xs text-gray-400">N/A</span>
@@ -117,7 +126,7 @@ export default function ApplicationsList({ applications, onScore, onUpdateStatus
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         <div className="flex flex-col gap-2">
                                             {/* Score Button */}
-                                            {(!app.ats_score || app.ats_score === 0) && !['parse_failed'].includes(app.status) && (
+                                            {(!app.ats_score || app.ats_score === 0) && (
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); onScore(app.id); }}
                                                     disabled={scoringId === app.id}
@@ -133,6 +142,21 @@ export default function ApplicationsList({ applications, onScore, onUpdateStatus
                                                     <button onClick={(e) => { e.stopPropagation(); onUpdateStatus(app.id, 'SHORTLISTED'); }} className="text-green-600 hover:text-green-900 border border-green-200 px-2 py-1 rounded text-xs">Shortlist</button>
                                                     <button onClick={(e) => { e.stopPropagation(); onUpdateStatus(app.id, 'REJECTED'); }} className="text-red-600 hover:text-red-900 border border-red-200 px-2 py-1 rounded text-xs">Reject</button>
                                                 </div>
+                                            )}
+
+                                            {/* Evaluate Exam */}
+                                            {(app.status === 'EXAM_SUBMITTED' || ['EXAM_PASSED', 'EXAM_FAILED'].includes(app.status)) && app.invite_tracking?.assignment_id && (
+                                                <Link
+                                                    href={`/admin/exams/${app.invite_tracking.assignment_id}/evaluate`}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className={`px-3 py-1 rounded text-xs shadow-sm font-bold flex items-center gap-1
+                                                        ${app.status === 'EXAM_SUBMITTED'
+                                                            ? 'bg-purple-600 hover:bg-purple-700 text-white animate-pulse'
+                                                            : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300'}
+                                                    `}
+                                                >
+                                                    {app.status === 'EXAM_SUBMITTED' ? '⚡ Evaluate' : 'View Result'}
+                                                </Link>
                                             )}
 
                                             {/* Assign Exam */}
