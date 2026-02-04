@@ -7,6 +7,17 @@ export default withAuth(
         const role = req.nextauth.token?.role
         const pathname = req.nextUrl.pathname
 
+        // 0. Automation/Internal API Protection
+        if (pathname.startsWith("/api/automation") || pathname.startsWith("/api/internal")) {
+            const authHeader = req.headers.get("authorization")
+            const secret = process.env.INTERNAL_AUTOMATION_SECRET
+            if (!secret || authHeader !== `Bearer ${secret}`) {
+                return NextResponse.json({ error: "Unauthorized automation request" }, { status: 401 })
+            }
+            return NextResponse.next()
+        }
+
+
         // 1. Admin Protection
         if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
             if (role !== "ADMIN") {
@@ -56,7 +67,9 @@ export default withAuth(
                     pathname.startsWith("/auth") ||
                     pathname.startsWith("/invite") ||
                     pathname.startsWith("/api/auth") ||
-                    pathname.startsWith("/api/webhooks")
+                    pathname.startsWith("/api/webhooks") ||
+                    pathname.startsWith("/api/automation") ||
+                    pathname.startsWith("/api/internal")
                 ) {
                     return true;
                 }
