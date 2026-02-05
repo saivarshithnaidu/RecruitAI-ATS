@@ -69,7 +69,8 @@ export default withAuth(
                     pathname.startsWith("/api/auth") ||
                     pathname.startsWith("/api/webhooks") ||
                     pathname.startsWith("/api/automation") ||
-                    pathname.startsWith("/api/internal")
+                    pathname.startsWith("/api/internal") ||
+                    pathname.startsWith("/api")
                 ) {
                     return true;
                 }
