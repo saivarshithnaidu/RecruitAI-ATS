@@ -1,15 +1,47 @@
 import { withAuth } from "next-auth/middleware"
 import { NextResponse } from "next/server"
+import jwt from "jsonwebtoken";
 
 export default withAuth(
-    function middleware(req) {
+    // @ts-ignore
+    async function middleware(req) {
         // @ts-ignore
-        const role = req.nextauth.token?.role
-        const pathname = req.nextUrl.pathname
+        let token = req.nextauth.token;
+        const authHeader = req.headers.get("authorization");
+        const pathname = req.nextUrl.pathname;
+
+        // 0.1. Token Override (Custom Header Auth)
+        if (authHeader && authHeader.startsWith("Bearer ")) {
+            const tokenStr = authHeader.split(" ")[1];
+            try {
+                const secret = process.env.NEXTAUTH_SECRET || "";
+                // @ts-ignore
+                const decoded = jwt.verify(tokenStr, secret);
+                if (decoded && typeof decoded === 'object') {
+                    // Mock the NextAuth token structure
+                    token = {
+                        ...token,
+                        // @ts-ignore
+                        sub: decoded.sub as string,
+                        // @ts-ignore
+                        email: decoded.email,
+                        // @ts-ignore
+                        role: decoded.role
+                    } as any
+                }
+            } catch (err) {
+                console.error("Middleware Token Verification Failed:", err);
+                // Don't error out, just fallback to standard session check or fail later
+                // If this was an explicit API call expecting auth, it will fail below
+            }
+        }
+
+        // @ts-ignore
+        const role = token?.role
+
 
         // 0. Automation/Internal API Protection
         if (pathname.startsWith("/api/automation") || pathname.startsWith("/api/internal")) {
-            const authHeader = req.headers.get("authorization")
             const secret = process.env.INTERNAL_AUTOMATION_SECRET
             if (!secret || authHeader !== `Bearer ${secret}`) {
                 return NextResponse.json({ error: "Unauthorized automation request" }, { status: 401 })

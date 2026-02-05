@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import jwt from "jsonwebtoken";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -9,7 +10,34 @@ export async function POST(req: NextRequest) {
     console.log("POST /api/admin/exams/create - Received request");
 
     try {
-        const session = await getServerSession(authOptions);
+        let session = await getServerSession(authOptions);
+
+        // Fallback for API Bearer Token
+        if (!session) {
+            const authHeader = req.headers.get("authorization");
+            if (authHeader && authHeader.startsWith("Bearer ")) {
+                try {
+                    const tokenStr = authHeader.split(" ")[1];
+                    // @ts-ignore
+                    const decoded = jwt.verify(tokenStr, process.env.NEXTAUTH_SECRET);
+                    // @ts-ignore
+                    if (decoded && decoded.role === 'ADMIN') {
+                        session = {
+                            user: {
+                                // @ts-ignore
+                                id: decoded.sub,
+                                // @ts-ignore
+                                email: decoded.email,
+                                // @ts-ignore
+                                role: decoded.role
+                            }
+                        } as any;
+                    }
+                } catch (e) {
+                    console.error("Manual Token Verify failed in route:", e);
+                }
+            }
+        }
 
         // @ts-ignore
         if (!session || session.user?.role !== 'ADMIN') {
