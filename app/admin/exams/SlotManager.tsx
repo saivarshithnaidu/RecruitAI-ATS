@@ -38,7 +38,11 @@ export default function SlotManager({ examId }: { examId: string }) {
             const res = await fetch(`/api/admin/exams/${examId}/slots`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newSlot)
+                body: JSON.stringify({
+                    ...newSlot,
+                    start_time: new Date(newSlot.start_time).toISOString(),
+                    end_time: new Date(newSlot.end_time).toISOString()
+                })
             });
             if (res.ok) {
                 fetchSlots();
