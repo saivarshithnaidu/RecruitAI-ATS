@@ -298,7 +298,8 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
                 flagged: (tabSwitches > 2 || fullscreenExits > 0)
             };
 
-            await submitExam(exam.id, answers, proctoringData);
+            const res = await submitExam(exam.id, answers, proctoringData);
+            if (res.error) throw new Error(res.error);
             router.refresh();
         } catch (e: any) {
             if (!auto) setError(e.message);

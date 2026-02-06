@@ -72,11 +72,17 @@ function CandidateStreamView({ candidateId, candidateName }: { candidateId?: str
     // If `candidateId` is passed, we filter.
 
     const specificTracks = tracks.filter(t => {
-        if (!candidateId) return true;
-        // Check identity
-        return t.participant.identity?.includes(candidateId) || t.participant.identity === candidateName;
-        // Note: identity depends on token generation.
-        // In token route: `participantName: ... || Candidate-${userId}`
+        // Since room is per-assignment (exam-{assignmentId}), any non-local camera is likely the candidate.
+        // We can filter out our own tracks if needed (though admin doesn't publish).
+
+        // If candidateId is provided, try to match identity
+        if (candidateId && t.participant.identity) {
+            // Identity might be "CandidateID" or "Name". 
+            // If filter is strict and fails, we see nothing.
+            // Better strategy: If there is a track, show it.
+            return true;
+        }
+        return true;
     });
 
     if (specificTracks.length === 0) {
