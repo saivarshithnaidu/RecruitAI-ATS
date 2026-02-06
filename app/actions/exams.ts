@@ -470,8 +470,8 @@ export async function submitExam(assignmentId: string, answers: Record<string, s
             return { error: "Access denied" };
         }
 
-        if (['completed', 'passed', 'failed'].includes(assignment.status)) {
-            return { error: "Exam already submitted." };
+        if (['completed', 'passed', 'failed', 'submitted', 'EXAM_SUBMITTED'].includes(assignment.status)) {
+            return { success: true, status: assignment.status, message: "Exam already submitted." };
         }
 
         let totalScore = 0;
