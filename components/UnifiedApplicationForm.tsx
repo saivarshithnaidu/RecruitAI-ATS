@@ -76,6 +76,13 @@ export default function UnifiedApplicationForm({ initialProfile }: { initialProf
         return edu || {};
     };
     const eduData = getInitialEdu();
+    // Legacy support: If 'degree' exists at root, treat it as graduation
+    const eduTenth = eduData.tenth || {};
+    const eduInter = eduData.intermediate || {};
+    const eduGrad = eduData.graduation || (eduData.degree ? eduData : {});
+
+    // State
+    const [eduType, setEduType] = useState<"12th" | "diploma">(eduInter.type || "12th");
 
     const getInitialSkills = () => {
         if (Array.isArray(initialProfile?.skills)) return initialProfile.skills.join(", ");
@@ -95,8 +102,8 @@ export default function UnifiedApplicationForm({ initialProfile }: { initialProf
     const [phoneLoading, setPhoneLoading] = useState(false);
 
     // College State
-    const [selectedCollege, setSelectedCollege] = useState<string>(eduData.college || "");
-    const [manualCollege, setManualCollege] = useState<boolean>(!eduData.college);
+    const [selectedCollege, setSelectedCollege] = useState<string>(eduGrad.college || "");
+    const [manualCollege, setManualCollege] = useState<boolean>(!eduGrad.college);
     const [collegeState, setCollegeState] = useState<string>("Andhra Pradesh");
     const [collegeDistrict, setCollegeDistrict] = useState<string>("");
 
@@ -335,123 +342,251 @@ export default function UnifiedApplicationForm({ initialProfile }: { initialProf
             </Card>
 
             {/* SECTION C: EDUCATION */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Education</CardTitle>
-                    <CardDescription>Your latest educational qualification.</CardDescription>
-                </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                        <Label htmlFor="educationDegree">Degree <span className="text-red-500">*</span></Label>
-                        <Input id="educationDegree" name="educationDegree" placeholder="B.Tech, B.Sc, MCA" required defaultValue={eduData.degree} />
-                        <FieldError name="educationDegree" />
-                    </div>
+            <div className="space-y-6">
 
-                    <div className="space-y-2">
-                        <Label htmlFor="educationYear">Graduation Year <span className="text-red-500">*</span></Label>
-                        <Input id="educationYear" name="educationYear" placeholder="2024" type="number" min="1990" max="2030" required defaultValue={eduData.year} />
-                        <FieldError name="educationYear" />
-                    </div>
+                {/* C1: 10th Class (SSC) */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Class 10th (SSC)</CardTitle>
+                        <CardDescription>Mandatory Secondary School details.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <Label htmlFor="eduTenthSchool">School Name <span className="text-red-500">*</span></Label>
+                            <Input id="eduTenthSchool" name="eduTenthSchool" placeholder="School Name" required defaultValue={eduTenth.school} />
+                            <FieldError name="eduTenthSchool" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="eduTenthBoard">Board <span className="text-red-500">*</span></Label>
+                            <Input id="eduTenthBoard" name="eduTenthBoard" placeholder="CBSE, ICSE, State Board" required defaultValue={eduTenth.board} />
+                            <FieldError name="eduTenthBoard" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="eduTenthState">State <span className="text-red-500">*</span></Label>
+                            <Input id="eduTenthState" name="eduTenthState" placeholder="State" required defaultValue={eduTenth.state} />
+                            <FieldError name="eduTenthState" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="eduTenthYear">Passing Year <span className="text-red-500">*</span></Label>
+                            <Input id="eduTenthYear" name="eduTenthYear" placeholder="2018" type="number" min="1990" max="2030" required defaultValue={eduTenth.year} />
+                            <FieldError name="eduTenthYear" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="eduTenthScore">Percentage / CGPA <span className="text-red-500">*</span></Label>
+                            <Input id="eduTenthScore" name="eduTenthScore" placeholder="9.8 or 95%" required defaultValue={eduTenth.score} />
+                            <FieldError name="eduTenthScore" />
+                        </div>
+                    </CardContent>
+                </Card>
 
-                    {/* College Selection System */}
-                    <div className="md:col-span-2 space-y-4 border-t pt-4 mt-2">
-                        <h4 className="text-sm font-semibold text-gray-900">Institute Details</h4>
+                {/* C2: Intermediate / Diploma */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Class 12th / Diploma</CardTitle>
+                        <CardDescription>Select one and fill details.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        {/* Toggle */}
+                        <div className="flex items-center gap-6 mb-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name="eduType"
+                                    value="12th"
+                                    checked={eduType === '12th'}
+                                    onChange={() => setEduType('12th')}
+                                    className="w-5 h-5 text-blue-600"
+                                />
+                                <span className={`font-medium ${eduType === '12th' ? 'text-blue-700' : 'text-gray-600'}`}>Class 12th</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name="eduType"
+                                    value="diploma"
+                                    checked={eduType === 'diploma'}
+                                    onChange={() => setEduType('diploma')}
+                                    className="w-5 h-5 text-blue-600"
+                                />
+                                <span className={`font-medium ${eduType === 'diploma' ? 'text-blue-700' : 'text-gray-600'}`}>Diploma</span>
+                            </label>
+                        </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
+                            <div className="md:col-span-2 space-y-2">
+                                <Label htmlFor="eduInterInstitute">{eduType === '12th' ? 'College Name' : 'Institute / Polytechnic Name'} <span className="text-red-500">*</span></Label>
+                                <Input id="eduInterInstitute" name="eduInterInstitute" placeholder="Institute Name" required defaultValue={eduInter.institute} />
+                                <FieldError name="eduInterInstitute" />
+                            </div>
                             <div className="space-y-2">
-                                <Label htmlFor="collegeState">State <span className="text-red-500">*</span></Label>
-                                <select
-                                    id="collegeState"
-                                    name="collegeState"
-                                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                    value={collegeState}
-                                    onChange={(e) => {
-                                        setCollegeState(e.target.value);
-                                        setCollegeDistrict(""); // Reset district on state change
-                                        setSelectedCollege(""); // Reset college on state change
-                                        if (e.target.value !== 'Andhra Pradesh') {
-                                            setManualCollege(true); // Force manual if not AP
-                                        } else {
-                                            setManualCollege(false); // Allow search if AP
-                                        }
-                                    }}
-                                    required
-                                >
-                                    <option value="Andhra Pradesh">Andhra Pradesh</option>
-                                    <option value="Other">Other</option>
-                                </select>
+                                <Label htmlFor="eduInterBoard">Board / University <span className="text-red-500">*</span></Label>
+                                <Input id="eduInterBoard" name="eduInterBoard" placeholder="Board / University" required defaultValue={eduInter.board} />
+                                <FieldError name="eduInterBoard" />
                             </div>
 
-                            {collegeState === 'Andhra Pradesh' && (
+                            {eduType === '12th' ? (
                                 <div className="space-y-2">
-                                    <Label htmlFor="collegeDistrict">District <span className="text-red-500">*</span></Label>
+                                    <Label htmlFor="eduInterStream">Stream <span className="text-red-500">*</span></Label>
                                     <select
-                                        id="collegeDistrict"
-                                        name="collegeDistrict"
-                                        className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                        value={collegeDistrict}
-                                        onChange={(e) => {
-                                            setCollegeDistrict(e.target.value);
-                                            setSelectedCollege(""); // Reset college on district change
-                                        }}
-                                        required={collegeState === 'Andhra Pradesh'}
+                                        id="eduInterStream"
+                                        name="eduInterStream"
+                                        className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background disabled:cursor-not-allowed disabled:opacity-50"
+                                        required
+                                        defaultValue={eduInter.stream || "Science"}
                                     >
-                                        <option value="">Select District</option>
-                                        {AP_DISTRICTS.map((dist) => (
-                                            <option key={dist} value={dist}>{dist}</option>
-                                        ))}
+                                        <option value="Science">Science (MPC/BiPC)</option>
+                                        <option value="Commerce">Commerce</option>
+                                        <option value="Arts">Arts</option>
+                                        <option value="Vocational">Vocational</option>
                                     </select>
+                                    <FieldError name="eduInterStream" />
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    <Label htmlFor="eduInterBranch">Branch <span className="text-red-500">*</span></Label>
+                                    <Input id="eduInterBranch" name="eduInterBranch" placeholder="Civil, Mechanical, CSE..." required defaultValue={eduInter.branch} />
+                                    <FieldError name="eduInterBranch" />
                                 </div>
                             )}
+
+                            <div className="space-y-2">
+                                <Label htmlFor="eduInterState">State <span className="text-red-500">*</span></Label>
+                                <Input id="eduInterState" name="eduInterState" placeholder="State" required defaultValue={eduInter.state} />
+                                <FieldError name="eduInterState" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="eduInterYear">Passing Year <span className="text-red-500">*</span></Label>
+                                <Input id="eduInterYear" name="eduInterYear" placeholder="2020" type="number" min="1990" max="2030" required defaultValue={eduInter.year} />
+                                <FieldError name="eduInterYear" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="eduInterScore">Percentage / CGPA <span className="text-red-500">*</span></Label>
+                                <Input id="eduInterScore" name="eduInterScore" placeholder="85%" required defaultValue={eduInter.score} />
+                                <FieldError name="eduInterScore" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* C3: Graduation */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Graduation</CardTitle>
+                        <CardDescription>Highest Qualification Details.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <Label htmlFor="educationDegree">Degree <span className="text-red-500">*</span></Label>
+                            <Input id="educationDegree" name="educationDegree" placeholder="B.Tech, B.Sc, MCA" required defaultValue={eduGrad.degree} />
+                            <FieldError name="educationDegree" />
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="educationCollege">College / University <span className="text-red-500">*</span></Label>
+                            <Label htmlFor="educationYear">Graduation Year <span className="text-red-500">*</span></Label>
+                            <Input id="educationYear" name="educationYear" placeholder="2024" type="number" min="1990" max="2030" required defaultValue={eduGrad.year} />
+                            <FieldError name="educationYear" />
+                        </div>
 
-                            {!manualCollege && collegeState === 'Andhra Pradesh' ? (
-                                <>
-                                    <Combobox
-                                        value={selectedCollege}
-                                        onSelect={(val) => {
-                                            setSelectedCollege(val);
-                                        }}
-                                        fetcher={async (q) => {
-                                            // Only search if district is selected or we want strict filtering
-                                            if (!collegeDistrict) return [];
-                                            const res = await searchColleges(q, collegeDistrict);
-                                            return res.map(c => ({ label: `${c.name}, ${c.city}`, value: c.name }));
-                                        }}
-                                        placeholder={collegeDistrict ? "Search college in " + collegeDistrict + "..." : "Select District first"}
-                                        searchPlaceholder="Type college name..."
-                                        disabled={!collegeDistrict}
-                                    />
-                                    <input type="hidden" name="educationCollege" value={selectedCollege} />
-                                    <input type="hidden" name="educationDistrict" value={collegeDistrict} />
+                        {/* College Selection System */}
+                        <div className="md:col-span-2 space-y-4 border-t pt-4 mt-2">
+                            <h4 className="text-sm font-semibold text-gray-900">Institute Details</h4>
 
-                                    <div className="text-right">
-                                        <button type="button" onClick={() => setManualCollege(true)} className="text-xs text-blue-600 hover:underline">
-                                            Can't find your college? Enter manually
-                                        </button>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="collegeState">State <span className="text-red-500">*</span></Label>
+                                    <select
+                                        id="collegeState"
+                                        name="collegeState"
+                                        className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                        value={collegeState}
+                                        onChange={(e) => {
+                                            setCollegeState(e.target.value);
+                                            setCollegeDistrict(""); // Reset district on state change
+                                            setSelectedCollege(""); // Reset college on state change
+                                            if (e.target.value !== 'Andhra Pradesh') {
+                                                setManualCollege(true); // Force manual if not AP
+                                            } else {
+                                                setManualCollege(false); // Allow search if AP
+                                            }
+                                        }}
+                                        required
+                                    >
+                                        <option value="Andhra Pradesh">Andhra Pradesh</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+
+                                {collegeState === 'Andhra Pradesh' && (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="collegeDistrict">District <span className="text-red-500">*</span></Label>
+                                        <select
+                                            id="collegeDistrict"
+                                            name="collegeDistrict"
+                                            className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                            value={collegeDistrict}
+                                            onChange={(e) => {
+                                                setCollegeDistrict(e.target.value);
+                                                setSelectedCollege(""); // Reset college on district change
+                                            }}
+                                            required={collegeState === 'Andhra Pradesh'}
+                                        >
+                                            <option value="">Select District</option>
+                                            {AP_DISTRICTS.map((dist) => (
+                                                <option key={dist} value={dist}>{dist}</option>
+                                            ))}
+                                        </select>
                                     </div>
-                                </>
-                            ) : (
-                                <div className="space-y-2 animate-fade-in">
-                                    <Input id="educationCollege" name="educationCollege" placeholder="Type your college name manually" required defaultValue={eduData.college} />
+                                )}
+                            </div>
 
-                                    {collegeState === 'Andhra Pradesh' && (
+                            <div className="space-y-2">
+                                <Label htmlFor="educationCollege">College / University <span className="text-red-500">*</span></Label>
+
+                                {!manualCollege && collegeState === 'Andhra Pradesh' ? (
+                                    <>
+                                        <Combobox
+                                            value={selectedCollege}
+                                            onSelect={(val) => {
+                                                setSelectedCollege(val);
+                                            }}
+                                            fetcher={async (q) => {
+                                                // Only search if district is selected or we want strict filtering
+                                                if (!collegeDistrict) return [];
+                                                const res = await searchColleges(q, collegeDistrict);
+                                                return res.map(c => ({ label: `${c.name}, ${c.city}`, value: c.name }));
+                                            }}
+                                            placeholder={collegeDistrict ? "Search college in " + collegeDistrict + "..." : "Select District first"}
+                                            searchPlaceholder="Type college name..."
+                                            disabled={!collegeDistrict}
+                                        />
+                                        <input type="hidden" name="educationCollege" value={selectedCollege} />
+                                        <input type="hidden" name="educationDistrict" value={collegeDistrict} />
+
                                         <div className="text-right">
-                                            <button type="button" onClick={() => setManualCollege(false)} className="text-xs text-blue-600 hover:underline">
-                                                Back to Search
+                                            <button type="button" onClick={() => setManualCollege(true)} className="text-xs text-blue-600 hover:underline">
+                                                Can't find your college? Enter manually
                                             </button>
                                         </div>
-                                    )}
-                                </div>
-                            )}
-                            <FieldError name="educationCollege" />
+                                    </>
+                                ) : (
+                                    <div className="space-y-2 animate-fade-in">
+                                        <Input id="educationCollege" name="educationCollege" placeholder="Type your college name manually" required defaultValue={eduGrad.college} />
+
+                                        {collegeState === 'Andhra Pradesh' && (
+                                            <div className="text-right">
+                                                <button type="button" onClick={() => setManualCollege(false)} className="text-xs text-blue-600 hover:underline">
+                                                    Back to Search
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                <FieldError name="educationCollege" />
+                            </div>
                         </div>
-                    </div>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+            </div>
 
             {/* SECTION D: SKILLS & PREFERENCES */}
             <Card>

@@ -136,10 +136,56 @@ export default function CandidateProfilePage({ params }: { params: Promise<{ id:
                                 <div>
                                     <h4 className="text-xs uppercase text-gray-400 font-bold tracking-wider mb-3">Education</h4>
                                     {profile?.education ? (
-                                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                                            <div className="font-bold text-gray-900">{profile.education.degree}</div>
-                                            <div className="text-gray-600 text-sm">{profile.education.college}</div>
-                                            <div className="text-gray-400 text-xs mt-1">Class of {profile.education.year}</div>
+                                        <div className="space-y-3">
+                                            {/* Graduation (New & Old Support) */}
+                                            {(profile.education.graduation || profile.education.degree) && (
+                                                <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                                    <div className="text-xs text-blue-600 font-bold uppercase mb-1">Graduation</div>
+                                                    <div className="font-bold text-gray-900">
+                                                        {profile.education.graduation?.degree || profile.education.degree}
+                                                    </div>
+                                                    <div className="text-gray-600 text-sm">
+                                                        {profile.education.graduation?.college || profile.education.college}
+                                                    </div>
+                                                    <div className="text-gray-400 text-xs mt-1">
+                                                        Class of {profile.education.graduation?.year || profile.education.year}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Intermediate / Diploma */}
+                                            {profile.education.intermediate && (
+                                                <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                                    <div className="text-xs text-blue-600 font-bold uppercase mb-1">
+                                                        {profile.education.intermediate.type === 'diploma' ? 'Diploma' : 'Class 12th'}
+                                                    </div>
+                                                    <div className="font-bold text-gray-900">
+                                                        {profile.education.intermediate.stream || profile.education.intermediate.branch || "N/A"}
+                                                    </div>
+                                                    <div className="text-gray-600 text-sm">
+                                                        {profile.education.intermediate.institute || profile.education.intermediate.college}
+                                                    </div>
+                                                    <div className="text-gray-400 text-xs mt-1">
+                                                        Score: {profile.education.intermediate.score}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* 10th Class */}
+                                            {profile.education.tenth && (
+                                                <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                                    <div className="text-xs text-blue-600 font-bold uppercase mb-1">Class 10th</div>
+                                                    <div className="font-bold text-gray-900">
+                                                        {profile.education.tenth.board}
+                                                    </div>
+                                                    <div className="text-gray-600 text-sm">
+                                                        {profile.education.tenth.school}
+                                                    </div>
+                                                    <div className="text-gray-400 text-xs mt-1">
+                                                        Score: {profile.education.tenth.score}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     ) : <p className="text-gray-400 text-sm">No education data.</p>}
                                 </div>

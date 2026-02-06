@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { ROLES } from "@/lib/roles";
 
 // Validation Schema
+// Validation Schema
 const applicationSchema = z.object({
     // Personal Details
     fullName: z.string().min(2, "Full name is required"),
@@ -19,7 +20,26 @@ const applicationSchema = z.object({
     addressState: z.string().min(2, "State is required"),
     addressPincode: z.string().regex(/^\d{6}$/, "Invalid Pincode (6 digits required)"),
 
-    // Education
+    // Education - 10th
+    eduTenthSchool: z.string().min(2, "School name is required"),
+    eduTenthBoard: z.string().min(2, "Board is required"),
+    eduTenthState: z.string().min(2, "State is required"),
+    eduTenthYear: z.string().regex(/^\d{4}$/, "Invalid Year"),
+    eduTenthScore: z.string().min(1, "Percentage/CGPA is required"),
+
+    // Education - Intermediate (12th or Diploma)
+    eduType: z.enum(["12th", "diploma"]),
+    // We will clean these up manually in the function or use refinement if strict logic needed
+    // For now, we allow optional in schema and validate manually to keep Zod simple or use stricter conditional
+    eduInterInstitute: z.string().optional(),
+    eduInterBoard: z.string().optional(),
+    eduInterState: z.string().optional(),
+    eduInterYear: z.string().optional(), // regex check manually if present
+    eduInterScore: z.string().optional(),
+    eduInterStream: z.string().optional(), // For 12th
+    eduInterBranch: z.string().optional(), // For Diploma
+
+    // Education - Graduation (Existing)
     educationDegree: z.string().min(1, "Degree is required"),
     educationCollege: z.string().min(1, "College is required"),
     educationYear: z.string().regex(/^\d{4}$/, "Invalid Year"),
@@ -54,7 +74,6 @@ export async function submitUnifiedApplication(
     }
 
     // 1. Extract Data
-    // 1. Extract Data
     const rawData = {
         fullName: (formData.get("fullName") as string || "").trim(),
         phone: (formData.get("phone") as string || "").trim(),
@@ -62,9 +81,29 @@ export async function submitUnifiedApplication(
         addressCity: (formData.get("addressCity") as string || "").trim(),
         addressState: (formData.get("addressState") as string || "").trim(),
         addressPincode: (formData.get("addressPincode") as string || "").trim(),
+
+        // 10th
+        eduTenthSchool: (formData.get("eduTenthSchool") as string || "").trim(),
+        eduTenthBoard: (formData.get("eduTenthBoard") as string || "").trim(),
+        eduTenthState: (formData.get("eduTenthState") as string || "").trim(),
+        eduTenthYear: (formData.get("eduTenthYear") as string || "").trim(),
+        eduTenthScore: (formData.get("eduTenthScore") as string || "").trim(),
+
+        // Inter
+        eduType: (formData.get("eduType") as "12th" | "diploma" || "12th"),
+        eduInterInstitute: (formData.get("eduInterInstitute") as string || "").trim(),
+        eduInterBoard: (formData.get("eduInterBoard") as string || "").trim(),
+        eduInterState: (formData.get("eduInterState") as string || "").trim(),
+        eduInterYear: (formData.get("eduInterYear") as string || "").trim(),
+        eduInterScore: (formData.get("eduInterScore") as string || "").trim(),
+        eduInterStream: (formData.get("eduInterStream") as string || "").trim(),
+        eduInterBranch: (formData.get("eduInterBranch") as string || "").trim(),
+
+        // Graduation
         educationDegree: (formData.get("educationDegree") as string || "").trim(),
         educationCollege: (formData.get("educationCollege") as string || "").trim(),
         educationYear: (formData.get("educationYear") as string || "").trim(),
+
         skills: (formData.get("skills") as string || "").trim(),
         preferredRoles: (formData.get("preferredRoles") as string || "").trim(),
         consent: (formData.get("consent") as string || ""),
@@ -83,6 +122,27 @@ export async function submitUnifiedApplication(
             errors: errors,
         };
     }
+
+    // Custom Validation for Intermediate fields
+    const data = validated.data;
+    const errors: Record<string, string[]> = {};
+
+    if (!data.eduInterInstitute) errors.eduInterInstitute = ["Institute name is required"];
+    if (!data.eduInterBoard) errors.eduInterBoard = ["Board/University is required"];
+    if (!data.eduInterState) errors.eduInterState = ["State is required"];
+    if (!data.eduInterYear) errors.eduInterYear = ["Passing year is required"];
+    if (!data.eduInterScore) errors.eduInterScore = ["Score is required"];
+
+    if (data.eduType === '12th') {
+        if (!data.eduInterStream) errors.eduInterStream = ["Stream is required"];
+    } else {
+        if (!data.eduInterBranch) errors.eduInterBranch = ["Branch is required"];
+    }
+
+    if (Object.keys(errors).length > 0) {
+        return { success: false, message: "Please check education details.", errors };
+    }
+
 
     // 3. Validate Resume
     if (!resumeFile || resumeFile.size === 0) {
@@ -104,7 +164,9 @@ export async function submitUnifiedApplication(
             fullName, phone,
             addressStreet, addressCity, addressState, addressPincode,
             educationDegree, educationCollege, educationYear,
-            skills, preferredRoles, consent
+            skills, preferredRoles, consent,
+            eduTenthSchool, eduTenthBoard, eduTenthState, eduTenthYear, eduTenthScore,
+            eduType, eduInterInstitute, eduInterBoard, eduInterState, eduInterYear, eduInterScore, eduInterStream, eduInterBranch
         } = validated.data;
 
         // Verify Consent (Double Check)
@@ -131,9 +193,28 @@ export async function submitUnifiedApplication(
 
         // 4. Construct Complex Objects
         const educationJSON = {
-            degree: educationDegree,
-            college: educationCollege,
-            year: educationYear
+            tenth: {
+                school: eduTenthSchool,
+                board: eduTenthBoard,
+                state: eduTenthState,
+                year: eduTenthYear,
+                score: eduTenthScore
+            },
+            intermediate: {
+                type: eduType,
+                institute: eduInterInstitute,
+                board: eduInterBoard,
+                state: eduInterState,
+                year: eduInterYear,
+                score: eduInterScore,
+                // Include stream OR branch based on type
+                ...(eduType === '12th' ? { stream: eduInterStream } : { branch: eduInterBranch })
+            },
+            graduation: {
+                degree: educationDegree,
+                college: educationCollege,
+                year: educationYear
+            }
         };
         const skillsArray = skills.split(',').map(s => s.trim()).filter(Boolean);
         const rolesArray = preferredRoles.split(',').map(r => r.trim()).filter(Boolean);
