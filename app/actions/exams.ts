@@ -564,7 +564,7 @@ export async function submitExam(assignmentId: string, answers: Record<string, s
         const passMark = assignment.exams?.pass_mark || 0;
 
         // We still calculate MCQ score for Admin reference
-        const resultStatus = 'submitted';
+        const resultStatus = 'completed';
         const appStatus = 'EXAM_SUBMITTED';
 
         console.log(`Exam Submitted: MCQ Score=${totalScore} (To be reviewed)`);
