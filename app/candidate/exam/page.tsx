@@ -97,19 +97,19 @@ export default async function CandidateExamPage() {
     }
 
     // --- SLOT ENFORCEMENT ---
+
+    // Fetch valid slots for this exam (needed for selection AND rescheduling)
+    const { data: slots } = await supabaseAdmin
+        .from('exam_slots')
+        .select('*')
+        .eq('exam_id', exam.exam_id)
+        .gt('end_time', new Date().toISOString()) // Show future AND ongoing slots
+        .order('start_time', { ascending: true });
+
+    const allSlots = slots || [];
+
     // If no slot selected, force selection
     if (!exam.slot_id) {
-        // Fetch valid slots for this exam
-        const { data: slots } = await supabaseAdmin
-            .from('exam_slots')
-            .select('*')
-            .eq('exam_id', exam.exam_id)
-            .gt('end_time', new Date().toISOString()) // Show future AND ongoing slots
-            .order('start_time', { ascending: true });
-
-        // Also fetch filled counts (simple logic)
-        const allSlots = slots || [];
-
         return <SlotSelection assignmentId={exam.id} slots={allSlots} />;
     }
 
@@ -126,23 +126,14 @@ export default async function CandidateExamPage() {
         const entryTime = startTime - (15 * 60 * 1000);
 
         if (now < entryTime) {
-            return (
-                <div className="max-w-xl mx-auto p-12 text-center mt-20 bg-white rounded shadow border border-blue-100">
-                    <h1 className="text-2xl font-bold text-gray-800 mb-4">Exam Scheduled</h1>
-                    <p className="text-gray-600 mb-2">You have booked a slot for:</p>
-                    <p className="text-xl font-bold text-blue-600 mb-6">
-                        {new Date(startTime).toLocaleString()}
-                    </p>
-                    <p className="text-sm text-gray-500 bg-gray-50 p-3 rounded">
-                        You can enter the exam waiting room 15 minutes before the start time.
-                        <br />
-                        Button will likely activate at {new Date(entryTime).toLocaleTimeString()}
-                    </p>
-                    <div className="mt-8">
-                        <Link href="/candidate/application" className="text-blue-600 hover:underline">Return to Dashboard</Link>
-                    </div>
-                </div>
-            )
+            // Early: Show Waiting Screen with Reschedule Option
+            return <SlotSelection
+                assignmentId={exam.id}
+                slots={allSlots}
+                currentSlot={slotObj}
+                // @ts-ignore
+                rescheduleCount={exam.reschedule_count || 0}
+            />;
         }
 
         if (now > endTime) {

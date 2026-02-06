@@ -31,7 +31,10 @@ export async function POST(req: NextRequest) {
         }
 
         if (assignment.slot_id) {
-            return NextResponse.json({ error: "Slot already selected" }, { status: 400 });
+            // Check reschedule limit
+            if ((assignment.reschedule_count || 0) >= 2) {
+                return NextResponse.json({ error: "Max rescheduling attempts (2) reached" }, { status: 400 });
+            }
         }
 
         // 2. Check Slot Capacity
@@ -42,7 +45,7 @@ export async function POST(req: NextRequest) {
 
         const { data: slot, error: slotError } = await supabaseAdmin
             .from('exam_slots')
-            .select('max_candidates')
+            .select('max_candidates, start_time, end_time')
             .eq('id', slot_id)
             .single();
 
@@ -54,15 +57,54 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Slot is full" }, { status: 409 });
         }
 
-        // 3. Assign Slot
+        // 3. Assign Slot (or Reschedule)
+        const isReschedule = !!assignment.slot_id;
+        const newCount = isReschedule ? (assignment.reschedule_count || 0) + 1 : 0;
+
         const { error: updateError } = await supabaseAdmin
             .from('exam_assignments')
-            .update({ slot_id: slot_id, status: 'assigned' }) // Ensure status is assigned
+            .update({
+                slot_id: slot_id,
+                status: 'assigned',
+                reschedule_count: newCount
+            })
             .eq('id', assignment_id);
 
         if (updateError) throw updateError;
 
-        return NextResponse.json({ success: true });
+        // 4. Send Email Notification
+        if (session.user.email) {
+            const dateStr = new Date(slot.start_time).toLocaleString('en-IN', {
+                timeZone: 'Asia/Kolkata', // Assuming IST as per previous interactions
+                dateStyle: 'full',
+                timeStyle: 'short'
+            });
+
+            const subject = isReschedule ? "Exam Rescheduled" : "Exam Slot Confirmed";
+            const html = `
+                <div style="font-family: Arial, sans-serif; color: #333;">
+                    <h2>${subject}</h2>
+                    <p>Dear Candidate,</p>
+                    <p>Your exam slot has been successfully ${isReschedule ? "rescheduled" : "booked"}.</p>
+                    <p><strong>New Time:</strong> ${dateStr}</p>
+                    ${isReschedule ? `<p>You have used ${newCount} of 2 rescheduling attempts.</p>` : ''}
+                    <p>Please log in to your dashboard to start the exam at the scheduled time.</p>
+                    <br/>
+                    <p>Best regards,<br/>RecruitAI Team</p>
+                </div>
+            `;
+
+            // Fire and forget email to not block response
+            import("@/lib/email").then(({ sendEmail }) => {
+                sendEmail({
+                    to: session.user.email!,
+                    subject: subject,
+                    html: html
+                });
+            });
+        }
+
+        return NextResponse.json({ success: true, rescheduled: isReschedule, attempts: newCount });
 
     } catch (e: any) {
         console.error("Slot Selection Error:", e);
