@@ -27,7 +27,7 @@ const applicationSchema = z.object({
     // Skills & Preferences
     skills: z.string().min(1, "At least one skill is required"), // Comma separated
     preferredRoles: z.string().min(1, "At least one role is required"), // Comma separated
-
+    consent: z.string().optional(), // Checkbox sends "on" if checked, missing if not
     // Resume (File validation handled separately as it comes as FormData Entry)
 });
 
@@ -67,6 +67,7 @@ export async function submitUnifiedApplication(
         educationYear: (formData.get("educationYear") as string || "").trim(),
         skills: (formData.get("skills") as string || "").trim(),
         preferredRoles: (formData.get("preferredRoles") as string || "").trim(),
+        consent: (formData.get("consent") as string || ""),
     };
 
     const resumeFile = formData.get("resume") as File;
@@ -103,8 +104,13 @@ export async function submitUnifiedApplication(
             fullName, phone,
             addressStreet, addressCity, addressState, addressPincode,
             educationDegree, educationCollege, educationYear,
-            skills, preferredRoles
+            skills, preferredRoles, consent
         } = validated.data;
+
+        // Verify Consent (Double Check)
+        if (!consent) {
+            return { success: false, message: "You must agree to the Terms & Privacy Policy." };
+        }
 
         // --- SECURITY CHECK: VERIFY PHONE OTP STATUS ---
         // We now check candidate_profiles because the unified OTP flow updates that table directly.
@@ -132,6 +138,32 @@ export async function submitUnifiedApplication(
         const skillsArray = skills.split(',').map(s => s.trim()).filter(Boolean);
         const rolesArray = preferredRoles.split(',').map(r => r.trim()).filter(Boolean);
 
+        // --- NEW: Profile Photo Upload ---
+        const profilePhoto = formData.get("profilePhoto") as File;
+        let profilePhotoUrl = null;
+
+        if (profilePhoto && profilePhoto.size > 0) {
+            const photoPath = `photos/${userId}/${Date.now()}-${profilePhoto.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+            const { error: photoError } = await supabaseAdmin.storage
+                .from('profile-photos')
+                .upload(photoPath, profilePhoto, {
+                    contentType: profilePhoto.type,
+                    upsert: false
+                });
+
+            if (photoError) {
+                console.error("Photo Upload Error:", photoError);
+                // Non-blocking error, but ideally should notify
+            } else {
+                const { data: publicData } = supabaseAdmin
+                    .storage
+                    .from('profile-photos')
+                    .getPublicUrl(photoPath);
+                profilePhotoUrl = publicData.publicUrl;
+            }
+        }
+        // ---------------------------------
+
         // 5. UPSERT PROFILE
         // We update the 'candidate_profiles' table (Source of Truth)
         const profileData = {
@@ -148,6 +180,14 @@ export async function submitUnifiedApplication(
             preferred_roles: rolesArray,
             // profile_completed: true // Checking if column exists -> Safest to include if requested
         };
+
+        // Add photo data if available
+        if (profilePhotoUrl) {
+            // @ts-ignore
+            profileData.profile_photo_url = profilePhotoUrl;
+            // @ts-ignore
+            profileData.photo_status = 'PENDING';
+        }
 
         // Perform Upsert
         const { error: profileError } = await supabaseAdmin
@@ -175,6 +215,8 @@ export async function submitUnifiedApplication(
             console.error("Resume Upload Error:", uploadError);
             return { success: false, message: "Failed to upload resume." };
         }
+
+
 
         // 7. Check for Existing Active Application
         const terminalStatuses = ['WITHDRAWN', 'REJECTED', 'EXAM_FAILED', 'DELETED', 'HIRED', 'EXAM_EXPIRED', 'EXPIRED'];
@@ -233,7 +275,10 @@ export async function submitUnifiedApplication(
                 phone: phone,
                 resume_url: resumePath,
                 status: 'APPLIED',
-                ats_score: 0
+                ats_score: 0,
+                // accepted_terms_at: new Date().toISOString() // Temporarily commented out until DB migration is confirmed
+                // NOTE to USER: Uncomment the line below after running migration:
+                accepted_terms_at: new Date().toISOString()
             });
 
         if (appError) {

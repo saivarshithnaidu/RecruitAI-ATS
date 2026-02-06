@@ -34,9 +34,17 @@ interface ApplicationsListProps {
     scoringId: string | null;
 }
 
+import { useRouter } from 'next/navigation';
+
 export default function ApplicationsList({ applications, onScore, onUpdateStatus, onAssignExam, scoringId }: ApplicationsListProps) {
+    const router = useRouter();
     const [expandedRow, setExpandedRow] = useState<string | null>(null);
-    const toggleRow = (id: string) => setExpandedRow(expandedRow === id ? null : id);
+    // const toggleRow = (id: string) => setExpandedRow(expandedRow === id ? null : id); // Old expansion behavior
+
+    // New behavior: Navigate to detailed profile
+    const handleRowClick = (appId: string) => {
+        router.push(`/admin/candidates/${appId}`);
+    };
 
     if (applications.length === 0) {
         return <div className="text-center py-8 text-gray-600">No applications found.</div>;
@@ -62,7 +70,7 @@ export default function ApplicationsList({ applications, onScore, onUpdateStatus
                     <tbody className="bg-white divide-y divide-gray-200">
                         {applications.map((app) => (
                             <Fragment key={app.id}>
-                                <tr onClick={() => toggleRow(app.id)} className="cursor-pointer hover:bg-gray-50 transition">
+                                <tr onClick={() => handleRowClick(app.id)} className="cursor-pointer hover:bg-blue-50 transition border-l-4 border-transparent hover:border-blue-500">
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="text-sm font-bold text-gray-900">{app.full_name}</div>
                                         <div className="text-sm text-gray-500">{app.email}</div>
@@ -173,26 +181,6 @@ export default function ApplicationsList({ applications, onScore, onUpdateStatus
                                         </div>
                                     </td>
                                 </tr>
-                                {expandedRow === app.id && (
-                                    <tr className="bg-gray-50">
-                                        <td colSpan={5} className="px-6 py-4 text-sm text-gray-700">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <h4 className="font-bold">ATS Summary</h4>
-                                                    <p className="mb-2 text-gray-600">{app.ats_summary || "No summary available."}</p>
-                                                    <h4 className="font-bold">Skills</h4>
-                                                    <p>{app.profiles?.skills?.join(', ') || 'N/A'}</p>
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-bold">Contact</h4>
-                                                    <p>Phone: {app.profiles?.mobile_number || app.phone || 'N/A'}</p>
-                                                    <h4 className="font-bold">Education</h4>
-                                                    <p>{JSON.stringify(app.profiles?.education || 'N/A')}</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )}
                             </Fragment>
                         ))}
                     </tbody>

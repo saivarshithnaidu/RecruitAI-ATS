@@ -172,22 +172,7 @@ export default function LandingPage() {
       </section>
 
       {/* 7. FOOTER */}
-      <footer className="py-12 bg-white text-center text-sm text-gray-500">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col items-center">
-          <div className="flex items-center gap-2 mb-6 opacity-70">
-            <div className="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center text-gray-500 font-bold text-sm">R</div>
-            <span className="font-bold text-gray-700">RecruitAI</span>
-          </div>
-
-          <div className="flex gap-8 mb-8">
-            <a href="#" className="hover:text-blue-600 transition">Privacy Policy</a>
-            <a href="#" className="hover:text-blue-600 transition">Terms of Service</a>
-            <a href="#" className="hover:text-blue-600 transition">Contact Support</a>
-          </div>
-
-          <p>&copy; {new Date().getFullYear()} RecruitAI. All rights reserved.</p>
-        </div>
-      </footer>
+      {/* 7. FOOTER (Handled by Global Layout) */}
     </div>
   );
 }

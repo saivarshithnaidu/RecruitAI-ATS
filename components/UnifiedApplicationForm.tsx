@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import { submitUnifiedApplication } from "@/app/actions/apply";
 import { requestPhoneOtp, verifyPhoneOtp } from "@/app/actions/verify";
 import { searchColleges } from "@/app/actions/colleges";
+import PhotoUpload from "@/components/PhotoUpload";
 import { Combobox } from "@/components/ui/async-combobox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -101,6 +102,7 @@ export default function UnifiedApplicationForm({ initialProfile }: { initialProf
 
     // Roles State
     const [selectedRoles, setSelectedRoles] = useState<string[]>(getInitialRoles());
+    const [photoFile, setPhotoFile] = useState<File | null>(null);
 
     // State for field-level errors
     const [fieldErrors, setFieldErrors] = useState<Record<string, string[]> | null>(null);
@@ -143,6 +145,11 @@ export default function UnifiedApplicationForm({ initialProfile }: { initialProf
     };
 
     async function clientAction(formData: FormData) {
+        if (!photoFile) {
+            setMessage({ type: 'error', text: "Profile Photo is required." });
+            window.scrollTo(0, 0);
+            return;
+        }
         if (!phoneVerified) {
             setMessage({ type: 'error', text: "Please verify your phone number to submit." });
             window.scrollTo(0, 0);
@@ -151,6 +158,10 @@ export default function UnifiedApplicationForm({ initialProfile }: { initialProf
 
         setMessage(null);
         setFieldErrors(null); // Clear previous errors
+
+        // Append photo manually since it is state-managed
+        formData.append('profilePhoto', photoFile);
+
         const res = await submitUnifiedApplication({}, formData);
 
         if (res.success) {
@@ -264,6 +275,17 @@ export default function UnifiedApplicationForm({ initialProfile }: { initialProf
                         <input type="hidden" name="phoneVerified" value={phoneVerified ? "true" : "false"} />
                         <FieldError name="phone" />
                     </div>
+                </CardContent>
+            </Card>
+
+            {/* SECTION: PROFILE PHOTO */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Profile Photo</CardTitle>
+                    <CardDescription>Upload a professional photo for your ID verification.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <PhotoUpload onFileSelect={setPhotoFile} />
                 </CardContent>
             </Card>
 
@@ -481,6 +503,25 @@ export default function UnifiedApplicationForm({ initialProfile }: { initialProf
                         </Label>
                         <p className="text-xs text-gray-500 mt-1">DOC, DOCX up to 5MB (Recommended)</p>
                         <p className="text-xs text-amber-600 mt-2 font-medium">PDF allowed, but DOCX parsing is better.</p>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* SECTION F: CONSENT */}
+            <Card>
+                <CardContent className="pt-6">
+                    <div className="flex items-start space-x-3">
+                        <input
+                            type="checkbox"
+                            id="consent"
+                            name="consent"
+                            required
+                            className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600"
+                        />
+                        <Label htmlFor="consent" className="text-sm text-gray-700 leading-relaxed font-normal">
+                            I agree to the <a href="/terms" target="_blank" className="text-blue-600 underline hover:text-blue-800">Terms & Conditions</a> and <a href="/privacy" target="_blank" className="text-blue-600 underline hover:text-blue-800">Privacy Policy</a>.
+                            I declare that all information provided is accurate and I consent to being monitored during assessments as per the platform rules.
+                        </Label>
                     </div>
                 </CardContent>
             </Card>

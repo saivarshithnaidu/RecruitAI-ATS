@@ -203,7 +203,7 @@ export async function scoreApplication(applicationId: string) {
             ats_score_locked: true,
             ats_scored_at: new Date().toISOString(),
             fallback_used: fallbackUsed,
-            parse_status: parseStatus
+            resume_parse_status: parseStatus === 'success' ? 'SUCCESS' : 'FAILED'
         }).eq("id", applicationId);
 
         // Send Success Email ONLY if valid status (skip for fallback usually, or send generic?)

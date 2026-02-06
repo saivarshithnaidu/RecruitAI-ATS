@@ -40,6 +40,46 @@ export default async function InterviewLobbyPage({ params }: { params: Promise<{
         return <div className="p-8 text-center text-green-600">You have already completed this interview.</div>;
     }
 
+    const { data: profile } = await supabaseAdmin
+        .from('candidate_profiles')
+        .select('photo_status, profile_photo_url')
+        .eq('user_id', session.user.id)
+        .single();
+
+    // Photo Verification Check
+    const photoStatus = profile?.photo_status || 'PENDING';
+    const hasPhoto = !!profile?.profile_photo_url;
+
+    if (photoStatus !== 'VERIFIED') {
+        return (
+            <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+                <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center">
+                    <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+                        ⚠️
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900 mb-2">Profile Photo Verification Required</h2>
+                    <p className="text-gray-600 mb-6">
+                        {photoStatus === 'REJECTED'
+                            ? "Your profile photo was rejected by the administrator. Please upload a new professional photo to proceed."
+                            : "Your profile photo is currently under review. You can only start the interview once it is verified."}
+                    </p>
+
+                    <div className="bg-gray-50 border rounded p-3 mb-6 flex items-center justify-center">
+                        <span className="text-sm font-medium text-gray-500 mr-2">Current Status:</span>
+                        <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${photoStatus === 'REJECTED' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+                            }`}>
+                            {photoStatus}
+                        </span>
+                    </div>
+
+                    <Link href="/candidate/application" className="inline-block w-full py-3 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 transition">
+                        Go to Profile
+                    </Link>
+                </div>
+            </div>
+        )
+    }
+
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
             <div className="max-w-3xl w-full bg-white rounded-2xl shadow-xl overflow-hidden">
