@@ -302,7 +302,10 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
             if (res.error) throw new Error(res.error);
             router.refresh();
         } catch (e: any) {
-            if (!auto) setError(e.message);
+            if (!auto) {
+                setError(e.message);
+                alert(`Submission Failed: ${e.message}`);
+            }
         } finally {
             setSubmitting(false);
         }

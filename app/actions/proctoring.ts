@@ -15,7 +15,7 @@ export async function getActiveProctoringSessions() {
                     candidate_profiles ( full_name, email )
                 )
             `)
-            .order('last_ping_at', { ascending: false });
+            .order('last_heartbeat', { ascending: false });
 
         if (error) throw error;
         return { sessions: data };
