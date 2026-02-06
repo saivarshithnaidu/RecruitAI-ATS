@@ -4,6 +4,7 @@ import { assignExam } from "@/app/actions/exams";
 import AssignButton from "././AssignCandidatesClient"; // Client Component
 import VerifyExamButton from "../VerifyExamButton";
 import ExamStatusPoller from "../ExamStatusPoller";
+import SlotManager from "../SlotManager";
 
 export const dynamic = 'force-dynamic';
 
@@ -137,6 +138,11 @@ export default async function ExamDetailsPage({ params }: { params: Promise<{ id
                             )}
                         </>
                     )}
+                </div>
+
+                {/* Exam Slots Management */}
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mt-8">
+                    <SlotManager examId={id} />
                 </div>
 
                 {/* Right: Existing Assignments / Results */}

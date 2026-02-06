@@ -139,10 +139,12 @@ async function generateSection(
   skills: string[],
   difficulty: string
 ): Promise<any> {
+  const isCodeAnalysis = sectionId === 'section_4';
+
   const prompt = `Generate ${count} ${title} questions for a ${difficulty} level exam.
 Role: ${role}
 Skills: ${skills.join(', ')}
-Details: ${details}
+Details: ${isCodeAnalysis ? "Code Analysis & Debugging Questions. Do NOT ask to write code from scratch. Ask to Find Bugs, Fix Logic, or Predict Output." : details}
 
 STRICT JSON ONLY. No markdown. No comments.
 Schema:
@@ -150,15 +152,15 @@ Schema:
   "questions": [
     {
       "id": number,
-      "question": "text",
-      "type": "${sectionId === 'section_4' ? 'coding' : 'mcq'}",
-      ${sectionId === 'section_4' ? `
-      "input_format": "...",
-      "output_format": "...",
-      "constraints": "...",
-      "test_cases": [{"input": "...", "output": "..."}],
+      "question": "text description of the bug to find or logic to fix",
+      "type": "${isCodeAnalysis ? 'code-analysis' : 'mcq'}",
+      ${isCodeAnalysis ? `
+      "subtype": "find-bug" | "fix-logic" | "predict-output",
+      "language": "python" | "javascript" | "java",
+      "code_snippet": "code with a bug or logic error here...",
+      "expected_answer": "correct fixed code line or output string",
       ` : `"options": ["A", "B", "C", "D"], "correct_answer": "Option string",`}
-      "marks": ${sectionId === 'section_4' ? 20 : 1}
+      "marks": ${isCodeAnalysis ? 10 : 1}
     }
   ]
 }`;
@@ -185,7 +187,7 @@ export async function generateExamPaper(role: string, skills: string[], difficul
       generateSection('section_1', 'Aptitude & Logical Reasoning', '10 Quantitative (Math/Data), 10 Logical Reasoning (Patterns/Puzzles)', 20, role, skills, difficulty),
       generateSection('section_2', 'Verbal Ability', '10 Verbal/Grammar MCQs (English comprehension)', 10, role, skills, difficulty),
       generateSection('section_3', 'Technical', `20 Technical MCQs based on: ${skills.join(', ')}`, 20, role, skills, difficulty),
-      generateSection('section_4', 'Coding', '1 Coding Problem (Algorithms/DS)', 1, role, skills, difficulty)
+      generateSection('section_4', 'Code Analysis & Debugging', '2 Code Analysis Problems (Debug/Logic)', 2, role, skills, difficulty)
     ]);
 
     // Validate

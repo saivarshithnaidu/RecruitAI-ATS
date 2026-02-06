@@ -89,16 +89,22 @@ export const EmailTemplates = {
             <p>Hello ${firstName},</p>
             <p>You have been assigned an online assessment: <strong>${examTitle}</strong>.</p>
             <div style="background: #f9fafb; padding: 15px; border-radius: 5px; margin: 15px 0;">
-                <p style="margin: 5px 0;"><strong>Date & Time:</strong> ${scheduledTime ? new Date(scheduledTime).toLocaleString() : 'Flexible'}</p>
+                ${scheduledTime
+                ? `<p style="margin: 5px 0;"><strong>Date & Time:</strong> ${new Date(scheduledTime).toLocaleString()}</p>`
+                : `<p style="margin: 5px 0; color: #d97706;"><strong>Action Required:</strong> Please login to select your preferred exam slot.</p>`
+            }
                 <p style="margin: 5px 0;"><strong>Duration:</strong> ${duration} Minutes</p>
             </div>
             <p><strong>Instructions:</strong></p>
             <ul style="padding-left: 20px;">
-                <li>You can enter the assessment lobby 15 minutes before the scheduled start time.</li>
+                ${scheduledTime
+                ? `<li>You can enter the assessment lobby 15 minutes before the scheduled start time.</li>`
+                : `<li>You must book a time slot before starting the exam.</li>`
+            }
                 <li>Ensure you have a stable internet connection.</li>
                 <li>Do not refresh the page or switch tabs unnecessarily during the exam.</li>
             </ul>
-             <p>Please login to your dashboard to access the assessment.</p>
+             <p>Please login to your dashboard to ${scheduledTime ? 'access the assessment' : 'book your slot'}.</p>
             <br>
              <a href="${link}" style="background-color: #2563EB; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Login to Dashboard</a>
         `)

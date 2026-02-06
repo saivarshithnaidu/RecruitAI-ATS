@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { startExam, submitExam } from "@/app/actions/exams";
 import { useRouter } from "next/navigation";
 import CodingEditor from "./CodingEditor";
+import CodeAnalysisViewer from "./CodeAnalysisViewer";
 import DualCameraSetup from "@/components/candidate/DualCameraSetup";
 import ProctorLiveKit from "@/components/candidate/ProctorLiveKit";
 
@@ -574,16 +575,16 @@ export default function ExamInterface({ exam, initialStatus }: { exam: any, init
 
                                     {/* Scrollable Content */}
                                     <div className="p-8 flex-1 overflow-y-auto">
-                                        {currentQuestion.type === 'coding' ? (
+                                        {(currentQuestion.type === 'coding' || currentQuestion.type === 'code-analysis') ? (
                                             <div className="h-full flex flex-col">
                                                 <h4 className="text-lg text-gray-900 font-medium mb-4 leading-relaxed">{currentQuestion.question}</h4>
                                                 <div className="flex-1 border rounded-lg overflow-hidden min-h-[400px]">
-                                                    <CodingEditor
+                                                    <CodeAnalysisViewer
                                                         question={currentQuestion}
                                                         assignmentId={exam.id}
                                                         questionIdx={currentQuestionIndex}
-                                                        onStatusChange={(status) => {
-                                                            setAnswers(prev => ({ ...prev, [currentQuestion.id]: status }));
+                                                        onStatusChange={(ans) => {
+                                                            setAnswers(prev => ({ ...prev, [currentQuestion.id]: ans }));
                                                         }}
                                                     />
                                                 </div>

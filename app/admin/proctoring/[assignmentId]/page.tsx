@@ -89,7 +89,6 @@ export default async function ProctoringLivePage({ params }: { params: Promise<{
                             {/* Live Mobile Receiver */}
                             <LiveMonitorClient
                                 examId={assignment.exam_id}
-                                assignmentId={assignmentId}
                                 candidateId={assignment.candidate_id}
                             />
                         </div>

@@ -289,6 +289,11 @@ export async function getCandidateExam() {
                 score,
                 proctoring_config,
                 scheduled_start_time,
+                slot_id,
+                exam_slots (
+                    start_time,
+                    end_time
+                ),
                 exams (
                     id,
                     title,
@@ -506,6 +511,20 @@ export async function submitExam(assignmentId: string, answers: Record<string, s
                     const sub = codingSubs?.find(s => s.question_idx === q.id);
                     if (sub && sub.status === 'passed') {
                         totalScore += (q.marks || 10);
+                    }
+                } else if (q.type === 'code-analysis') {
+                    // Simple Evaluation: Check if answer contains expected fix or matches output
+                    const userAns = answers[q.id]?.trim().toLowerCase();
+                    const expected = q.expected_answer?.trim().toLowerCase();
+
+                    if (userAns && expected) {
+                        if (q.subtype === 'predict-output') {
+                            // Exact match for output prediction
+                            if (userAns === expected) totalScore += (q.marks || 10);
+                        } else {
+                            // Contains match for logic/bug fix (lenient)
+                            if (userAns.includes(expected)) totalScore += (q.marks || 10);
+                        }
                     }
                 }
             });
