@@ -598,8 +598,21 @@ export async function submitExam(assignmentId: string, answers: Record<string, s
         if (user && user.user) {
             await supabaseAdmin
                 .from('applications')
-                .update({ status: appStatus })
+                .update({ status: resultStatus }) // e.g. 'completed'
                 .eq('email', user.user.email);
+
+            // AUTO-PASS/FAIL LOGIC
+            const passed = totalScore >= passMark;
+            const newStatus = passed ? 'INTERVIEW' : 'EXAM_FAILED';
+
+            // If passed, move to INTERVIEW
+            // If failed, move to EXAM_FAILED
+            await supabaseAdmin
+                .from('applications')
+                .update({ status: newStatus })
+                .eq('email', user.user.email);
+
+            console.log(`[SubmitExam] User ${user.user.email} -> ${newStatus} (Score: ${totalScore}/${passMark})`);
         }
 
         revalidatePath('/candidate/dashboard');

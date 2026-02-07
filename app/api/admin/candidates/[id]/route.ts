@@ -38,6 +38,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
             .eq('user_id', userId)
             .single();
 
+        // Fallback for photo
+        if (profile && !profile.profile_photo_url && application.resume_url) {
+            // Just a placeholder logic, usually resume isn't a photo.
+            // Check if application has valid photo or if we should use a default.
+            // Actually, let's inject a default if missing in the response data.
+        }
+
 
 
         // 2. Fetch Exam Results
@@ -82,7 +89,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
             success: true,
             data: {
                 application,
-                profile: profile,
+                profile: {
+                    ...profile,
+                    profile_photo_url: profile?.profile_photo_url || application?.photo_url || "/default-avatar.png"
+                },
                 examResults: examResults || [],
                 interviews: interviews || [],
                 proctoring: proctoringStats

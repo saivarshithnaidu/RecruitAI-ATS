@@ -33,13 +33,8 @@ export async function POST(request: Request) {
 
         // Allow update if status is FAILED or PENDING or if score is 0.
         // Block if SUCCESS (unless score is 0, which implies logical failure).
-        const canUpdate = app.resume_parse_status === 'FAILED'
-            || app.resume_parse_status === 'PENDING'
-            || app.ats_score === 0;
-
-        if (!canUpdate) {
-            return NextResponse.json({ success: false, message: "Cannot overwrite AI-generated score." }, { status: 403 });
-        }
+        // Allow update always for Admin
+        // const canUpdate = app.resume_parse_status === 'FAILED' ... (Removed restricted check)
 
         // Update
         const { error } = await supabaseAdmin

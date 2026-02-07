@@ -12,9 +12,10 @@ export async function getActiveProctoringSessions() {
                 exam_assignments (
                     id,
                     exams ( title ),
-                    candidate_profiles ( full_name, email )
+                    applications ( full_name, email )
                 )
             `)
+
             .order('last_heartbeat', { ascending: false });
 
         if (error) throw error;
