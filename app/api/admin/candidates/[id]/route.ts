@@ -85,13 +85,62 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
             if (violationCount > 5) proctoringStats.riskLevel = 'High';
         }
 
+        // 4.5 Handle Resume (Signed URL if needed)
+        let finalResumeUrl = application.resume_url;
+        if (finalResumeUrl && !finalResumeUrl.startsWith('http')) {
+            const { data: signedResume } = await supabaseAdmin
+                .storage
+                .from('resumes')
+                .createSignedUrl(finalResumeUrl, 3600);
+            if (signedResume) finalResumeUrl = signedResume.signedUrl;
+        }
+
+        // 5. Handle Profile Photo (Advanced Resolution)
+        let photoSource = profile?.profile_photo_url || profile?.profilePhotoUrl || application?.photo_url || application?.profile_photo_url;
+        let finalPhotoUrl = photoSource;
+
+        if (photoSource) {
+            // If it's a storage path (no http), sign it
+            if (!photoSource.startsWith('http')) {
+                const { data: signedPhoto } = await supabaseAdmin
+                    .storage
+                    .from('profile-photos')
+                    .createSignedUrl(photoSource, 3600);
+                if (signedPhoto) finalPhotoUrl = signedPhoto.signedUrl;
+            }
+            // If it's a Supabase URL, extract path and sign it (handles public URLs on private buckets)
+            else if (photoSource.includes('supabase.co/storage/v1/object/')) {
+                const pathParts = photoSource.split('/profile-photos/');
+                if (pathParts.length > 1) {
+                    const storagePath = decodeURIComponent(pathParts[1].split('?')[0]);
+                    const { data: signedPhoto } = await supabaseAdmin
+                        .storage
+                        .from('profile-photos')
+                        .createSignedUrl(storagePath, 3600);
+                    if (signedPhoto) finalPhotoUrl = signedPhoto.signedUrl;
+                }
+            }
+        }
+
+        // Ultimate fallback to UI Avatars
+        if (!finalPhotoUrl) {
+            finalPhotoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(application.full_name)}&background=random&color=fff`;
+        }
+
         return NextResponse.json({
             success: true,
             data: {
-                application,
+                application: {
+                    ...application,
+                    resume_url: finalResumeUrl,
+                    aiAtsScore: application.aiAtsScore || application.ats_score || 0,
+                    atsStatus: application.atsStatus || (application.ats_score > 0 ? 'COMPLETED' : 'PENDING'),
+                    manualAtsScore: application.manualAtsScore || application.ats_score || 0,
+                    notes: application.notes || application.admin_notes || ""
+                },
                 profile: {
                     ...profile,
-                    profile_photo_url: profile?.profile_photo_url || application?.photo_url || "/default-avatar.png"
+                    profile_photo_url: finalPhotoUrl
                 },
                 examResults: examResults || [],
                 interviews: interviews || [],

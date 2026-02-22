@@ -28,7 +28,8 @@ export default function CandidateProfilePage({ params }: { params: Promise<{ id:
                 const json = await res.json();
                 if (json.success) {
                     setData(json.data);
-                    setNotes(json.data.application.admin_notes || '');
+                    // Use CamelCase fields from updated API
+                    setNotes(json.data.application.notes || json.data.application.admin_notes || '');
                 } else {
                     setError(json.message);
                 }
@@ -41,16 +42,33 @@ export default function CandidateProfilePage({ params }: { params: Promise<{ id:
         fetchData();
     }, [id]);
 
+    const handleRefresh = async () => {
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/admin/candidates/${id}`);
+            const json = await res.json();
+            if (json.success) setData(json.data);
+        } catch (e) {
+            console.error("Refresh failed", e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const saveNotes = async () => {
         setSavingNotes(true);
         try {
-            const res = await fetch('/api/admin/application/update-notes', {
-                method: 'POST',
+            const res = await fetch(`/api/admin/candidates/${id}/notes`, {
+                method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ applicationId: id, notes })
+                body: JSON.stringify({ notes })
             });
             const json = await res.json();
-            if (!json.success) alert("Failed to save notes");
+            if (!json.success) {
+                alert("Failed to save notes: " + json.message);
+            } else {
+                console.log("Notes saved successfully");
+            }
         } catch (e) {
             alert("Error saving notes");
         } finally {
@@ -271,8 +289,9 @@ export default function CandidateProfilePage({ params }: { params: Promise<{ id:
                         {/* 3. ATS ANALYSIS */}
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                             <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-6 text-white text-center">
-                                <div className="text-4xl font-bold mb-1">{application.ats_score}%</div>
+                                <div className="text-4xl font-bold mb-1">{application.aiAtsScore || application.ats_score || 0}%</div>
                                 <div className="text-blue-100 text-sm font-medium">ATS Compatibility Score</div>
+                                <div className="text-[10px] mt-1 opacity-70">Status: {application.atsStatus || 'PENDING'}</div>
                             </div>
                             <div className="p-6">
                                 <h4 className="font-bold text-gray-800 mb-3 text-sm">Analysis Summary</h4>
@@ -280,14 +299,14 @@ export default function CandidateProfilePage({ params }: { params: Promise<{ id:
                                     {application.ats_summary || "No detailed summary available from AI analysis yet."}
                                 </p>
 
-                                {/* Manual Score Input (Only if Failed/Pending/Zero) */}
-                                {(application.resume_parse_status === 'FAILED' || application.ats_score === 0) && (
+                                {/* Manual Score Input (Shown if AI failed or for override) */}
+                                {(application.resume_parse_status === 'FAILED' || (application.aiAtsScore || application.ats_score) === 0) && (
                                     <div className="mb-4 bg-orange-50 border border-orange-200 rounded-lg p-3">
                                         <label className="block text-xs font-bold text-orange-800 mb-1">
                                             Admin Manual Override
                                         </label>
                                         <p className="text-xs text-orange-600 mb-2">
-                                            Resume parsing failed. Please assign a score manually.
+                                            Assign a score manually to persist.
                                         </p>
                                         <div className="flex gap-2">
                                             <input
@@ -297,6 +316,7 @@ export default function CandidateProfilePage({ params }: { params: Promise<{ id:
                                                 className="w-20 text-sm border-gray-300 rounded focus:ring-orange-500 focus:border-orange-500"
                                                 placeholder="0-100"
                                                 id="manual-ats-score"
+                                                defaultValue={application.manualAtsScore || application.ats_score || ""}
                                             />
                                             <button
                                                 onClick={async () => {
@@ -305,15 +325,15 @@ export default function CandidateProfilePage({ params }: { params: Promise<{ id:
                                                     if (!score) return;
 
                                                     try {
-                                                        const res = await fetch('/api/admin/application/manual-score', {
-                                                            method: 'POST',
+                                                        const res = await fetch(`/api/admin/candidates/${id}/manual-ats`, {
+                                                            method: 'PATCH',
                                                             headers: { 'Content-Type': 'application/json' },
-                                                            body: JSON.stringify({ applicationId: application.id, score })
+                                                            body: JSON.stringify({ score })
                                                         });
                                                         const json = await res.json();
                                                         if (json.success) {
-                                                            alert('Score updated');
-                                                            window.location.reload();
+                                                            alert('Score updated successfully');
+                                                            handleRefresh(); // Properly refresh state
                                                         } else {
                                                             alert('Error: ' + json.message);
                                                         }

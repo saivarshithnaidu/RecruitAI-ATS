@@ -12,6 +12,10 @@ interface Application {
     resume_url: string;
     status: string;
     ats_score: number;
+    aiAtsScore?: number;
+    atsStatus?: string;
+    manualAtsScore?: number;
+    notes?: string;
     ats_score_locked?: boolean;
     ats_summary?: string;
     created_at: string;
@@ -105,11 +109,11 @@ export default function ApplicationsList({ applications, onScore, onUpdateStatus
                                         )}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        {(app.ats_score > 0) ? (
+                                        {((app.aiAtsScore ?? 0) > 0 || app.ats_score > 0) ? (
                                             <div>
                                                 <div className="flex items-center gap-2">
-                                                    <span className={`text-lg font-bold ${app.ats_score >= 70 ? 'text-green-600' : 'text-orange-500'}`}>
-                                                        {app.ats_score}%
+                                                    <span className={`text-lg font-bold ${(app.aiAtsScore ?? app.ats_score) >= 70 ? 'text-green-600' : 'text-orange-500'}`}>
+                                                        {app.aiAtsScore ?? app.ats_score}%
                                                     </span>
                                                     {/* @ts-ignore */}
                                                     {app.fallback_used && (
@@ -134,7 +138,7 @@ export default function ApplicationsList({ applications, onScore, onUpdateStatus
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         <div className="flex flex-col gap-2">
                                             {/* Score Button */}
-                                            {(!app.ats_score || app.ats_score === 0) && (
+                                            {((app.aiAtsScore ?? 0) === 0) && (app.ats_score === 0) && (
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); onScore(app.id); }}
                                                     disabled={scoringId === app.id}

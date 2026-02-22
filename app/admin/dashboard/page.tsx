@@ -79,7 +79,14 @@ export default function AdminDashboardPage() {
             const json = await res.json();
             if (json.success) {
                 // @ts-ignore
-                setApplications(prev => prev.map(app => app.id === applicationId ? { ...app, ats_score: json.data.score, status: json.data.status, ats_summary: json.data.summary } : app));
+                setApplications(prev => prev.map(app => app.id === applicationId ? {
+                    ...app,
+                    aiAtsScore: json.data.score,
+                    atsStatus: json.data.status || 'COMPLETED',
+                    ats_score: json.data.score,
+                    status: json.data.status || (json.data.score >= 70 ? 'SHORTLISTED' : 'REJECTED'),
+                    ats_summary: json.data.summary
+                } : app));
             } else alert("Error: " + json.message);
         } finally { setScoringId(null); }
     }

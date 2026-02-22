@@ -99,20 +99,11 @@ export async function generateAtsScore(applicationId: string) {
             if (!content) throw new Error("Empty AI response")
             const result = JSON.parse(content)
 
-            // Validate logic
-            let finalStatus = "SCORED_AI" // Intermediate status, will map to SHORTLISTED/REJECTED
-            // Actually requirement says status flow: APPLIED -> SCORED_AI -> SHORTLISTED
-            // But we can go straight to SCORED_AI and let admin shortlist? 
-            // Phase 2 says: APPLIED -> SCORED_AI | SCORED_FALLBACK -> SHORTLISTED.
-            // So status should be SCORED_AI.
-            // But score logic above says "REJECTED" | "SHORTLISTED".
-            // Let's store the AI's recommendation in "ats_summary" or just use the score.
-            // We set status to 'SCORED_AI' to indicate it's ready for review.
-
             // 6. Persist Success
-            await updateApplicationScore(applicationId, result.score, result.feedback, 'SCORED_AI')
+            // REQUIREMENT: Update candidate record in DB: fields: aiAtsScore, atsStatus = "COMPLETED"
+            await updateApplicationScore(applicationId, result.score, result.feedback, 'COMPLETED')
 
-            return { success: true, score: result.score }
+            return { success: true, score: result.score, status: 'COMPLETED' }
 
         } catch (aiError) {
             console.error("AI Generation Failed, attempting fallback:", aiError)
@@ -120,9 +111,9 @@ export async function generateAtsScore(applicationId: string) {
             // 7. Fallback Scoring
             const { score, startStatus } = calculateFallbackScore(resumeText)
 
-            await updateApplicationScore(applicationId, score, "Automated keyword scoring (AI unavailable). Please review manually.", 'SCORED_FALLBACK')
+            await updateApplicationScore(applicationId, score, "Automated keyword scoring (AI unavailable). Please review manually.", 'COMPLETED')
 
-            return { success: true, score, fallback: true }
+            return { success: true, score, fallback: true, status: 'COMPLETED' }
         }
 
     } catch (error: any) {
@@ -133,18 +124,48 @@ export async function generateAtsScore(applicationId: string) {
 
 // Helper to update DB
 async function updateApplicationScore(id: string, score: number, summary: string, status: string) {
+    console.log(`Updating DB for application ${id}: score=${score}, status=${status}`);
+
     const { error } = await supabaseAdmin
         .from('applications')
         .update({
+            // New camelCase fields as requested
+            aiAtsScore: score,
+            atsStatus: status,
+            // Keep legacy fields for backward compatibility if they exist
             ats_score: score,
             ats_summary: summary,
-            status: status
+            status: status === 'COMPLETED' ? (score >= 70 ? 'SHORTLISTED' : 'REJECTED') : status
         })
         .eq('id', id)
 
-    if (error) throw new Error("DB Update Failed: " + error.message)
+    if (error) {
+        console.warn("Primary DB Update Failed, checking for missing columns:", error.message);
+        // Resilient fallback for missing columns
+        if (error.code === '42703' || error.message.includes('column') || error.message.includes('aiAtsScore')) {
+            console.warn("Falling back to legacy columns.");
+            const { error: legacyError } = await supabaseAdmin
+                .from('applications')
+                .update({
+                    ats_score: score,
+                    ats_summary: summary,
+                    status: status === 'COMPLETED' ? (score >= 70 ? 'SHORTLISTED' : 'REJECTED') : status
+                })
+                .eq('id', id);
+
+            if (legacyError) {
+                console.error("Legacy update failed too:", legacyError);
+                throw new Error("Legacy DB Update Failed: " + legacyError.message);
+            }
+        } else {
+            console.error("Critical DB Update Error:", error);
+            throw new Error("DB Update Failed: " + error.message);
+        }
+    }
+
     revalidatePath("/dashboard")
     revalidatePath("/admin/applications")
+    revalidatePath(`/admin/candidates/${id}`)
 }
 
 // Fallback logic

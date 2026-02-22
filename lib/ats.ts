@@ -196,7 +196,12 @@ export async function scoreApplication(applicationId: string) {
         }
 
         // Update DB
-        await supabaseAdmin.from("applications").update({
+        const { error: updateError } = await supabaseAdmin.from("applications").update({
+            // New camelCase fields as requested
+            aiAtsScore: atsScore,
+            atsStatus: "COMPLETED",
+
+            // Legacy fields for backward compatibility
             ats_score: atsScore,
             ats_summary: atsSummary,
             status: finalStatus,
@@ -205,6 +210,27 @@ export async function scoreApplication(applicationId: string) {
             fallback_used: fallbackUsed,
             resume_parse_status: parseStatus === 'success' ? 'SUCCESS' : 'FAILED'
         }).eq("id", applicationId);
+
+        if (updateError) {
+            console.warn("Primary DB Update Failed in lib/ats, attempting legacy fallback:", updateError.message);
+
+            // Aggressive fallback for ANY error that might be schema-related
+            const { error: legacyError } = await supabaseAdmin.from("applications").update({
+                ats_score: atsScore,
+                ats_summary: atsSummary,
+                status: finalStatus,
+                ats_score_locked: true,
+                ats_scored_at: new Date().toISOString(),
+                fallback_used: fallbackUsed,
+                resume_parse_status: parseStatus === 'success' ? 'SUCCESS' : 'FAILED'
+            }).eq("id", applicationId);
+
+            if (legacyError) {
+                console.error("Critical: Both primary and legacy updates failed in lib/ats:", legacyError);
+            } else {
+                console.log("Legacy fallback successful in lib/ats.");
+            }
+        }
 
         // Send Success Email ONLY if valid status (skip for fallback usually, or send generic?)
         if (finalStatus !== 'SCORED_FALLBACK') {

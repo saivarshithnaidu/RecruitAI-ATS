@@ -89,20 +89,39 @@ export async function GET() {
                     exam_status: assignment.status
                 } : null,
                 profiles: candidateProfile ? {
-                    mobile_number: candidateProfile.phone, // Map new col to old key for frontend compatibility
+                    mobile_number: candidateProfile.phone,
                     summary: candidateProfile.summary,
                     skills: candidateProfile.skills,
                     education: candidateProfile.education,
-                    preferred_job_roles: candidateProfile.preferred_roles, // Map to frontend key
-                    profile_verified: candidateProfile.verified_by_admin, // Map to frontend key
-                    // Add new strict fields if needed by frontend updates, but user said "Do NOT remove existing UI"
-                    // Existing UI expects: mobile_number, summary, skills, education, preferred_job_roles, profile_verified
-                    // We mapped them above.
+                    preferred_job_roles: candidateProfile.preferred_roles,
+                    profile_verified: candidateProfile.verified_by_admin,
                     verification_status: candidateProfile.verification_status,
                     phone_verified: candidateProfile.phone_verified,
-                    email_verified: candidateProfile.email_verified
+                    email_verified: candidateProfile.email_verified,
+                    profile_photo_url: await (async () => {
+                        let photoSource = candidateProfile.profile_photo_url || candidateProfile.profilePhotoUrl;
+                        if (!photoSource) return `https://ui-avatars.com/api/?name=${encodeURIComponent(app.full_name)}&background=random&color=fff`;
 
-                } : null,
+                        let finalPhotoUrl = photoSource;
+                        // Sign storage paths
+                        if (!photoSource.startsWith('http')) {
+                            const { data } = await supabaseAdmin.storage.from('profile-photos').createSignedUrl(photoSource, 3600);
+                            if (data) finalPhotoUrl = data.signedUrl;
+                        }
+                        // Sign Supabase URLs (handles public on private)
+                        else if (photoSource.includes('supabase.co/storage/v1/object/')) {
+                            const pathParts = photoSource.split('/profile-photos/');
+                            if (pathParts.length > 1) {
+                                const storagePath = decodeURIComponent(pathParts[1].split('?')[0]);
+                                const { data } = await supabaseAdmin.storage.from('profile-photos').createSignedUrl(storagePath, 3600);
+                                if (data) finalPhotoUrl = data.signedUrl;
+                            }
+                        }
+                        return finalPhotoUrl;
+                    })()
+                } : {
+                    profile_photo_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(app.full_name)}&background=random&color=fff`
+                },
                 // Ensure we always have a date field
                 applied_at: app.created_at || app.applied_at || null
             };
