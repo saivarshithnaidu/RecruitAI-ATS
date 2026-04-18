@@ -106,7 +106,10 @@ export default withAuth(
                     pathname.startsWith("/api/webhooks") ||
                     pathname.startsWith("/api/automation") ||
                     pathname.startsWith("/api/internal") ||
-                    pathname.startsWith("/api")
+                    pathname.startsWith("/api") ||
+                    pathname.endsWith(".html") ||
+                    pathname === "/robots.txt" ||
+                    pathname === "/sitemap.xml"
                 ) {
                     return true;
                 }
