@@ -61,22 +61,23 @@ export default withAuth(
 
         if (subdomain === "admin") {
             // Map admin.domain.com/dashboard to /admin/dashboard
-            if (!pathname.startsWith("/admin") && !pathname.startsWith("/api/admin")) {
+            // EXCLUDE shared routes like /auth, /api/auth
+            if (!pathname.startsWith("/admin") && !pathname.startsWith("/api/admin") && !pathname.startsWith("/auth") && !pathname.startsWith("/api/auth")) {
                 response = NextResponse.rewrite(new URL(`/admin${pathname === "/" ? "/dashboard" : pathname}`, req.url));
             }
         } else if (subdomain === "candidate") {
             // Map candidate.domain.com/dashboard to /candidate/dashboard
-            if (!pathname.startsWith("/candidate") && !pathname.startsWith("/api/candidate")) {
+            if (!pathname.startsWith("/candidate") && !pathname.startsWith("/api/candidate") && !pathname.startsWith("/auth") && !pathname.startsWith("/api/auth")) {
                 response = NextResponse.rewrite(new URL(`/candidate${pathname === "/" ? "/dashboard" : pathname}`, req.url));
             }
         } else if (subdomain === "apply") {
             // Map apply.domain.com/ to /apply/
-            if (!pathname.startsWith("/apply")) {
+            if (!pathname.startsWith("/apply") && !pathname.startsWith("/auth") && !pathname.startsWith("/api/auth")) {
                 response = NextResponse.rewrite(new URL(`/apply${pathname}`, req.url));
             }
         } else if (subdomain === "interview") {
             // Map interview.domain.com/ to /candidate/interviews/
-            if (!pathname.startsWith("/candidate/interview")) {
+            if (!pathname.startsWith("/candidate/interview") && !pathname.startsWith("/auth") && !pathname.startsWith("/api/auth")) {
                 const targetPath = pathname === "/" ? "/candidate/interviews" : `/candidate/interviews${pathname}`;
                 response = NextResponse.rewrite(new URL(targetPath, req.url));
             }
