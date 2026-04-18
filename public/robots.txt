@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Allow: /apply
+Disallow: /admin
+Disallow: /candidate
+Disallow: /api
+
+Sitemap: https://recruitaitech.in/sitemap.xml
