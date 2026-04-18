@@ -38,8 +38,13 @@ export default withAuth(
             }
         }
 
-        // --- 2. ENFORCEMENT REDIRECTS (Main Domain -> Subdomain) ---
-        // If we are on the main domain (recruitaitech.in or www.recruitaitech.in),
+        // --- 2. ENFORCEMENT REDIRECTS (Main Domain -> Subdomain & Auth -> Main Domain) ---
+        // A. If on a SUBDOMAIN and visiting /auth path -> Redirect to MAIN DOMAIN (to fix Google OAuth mismatch)
+        if (subdomain && !isDev && (pathname.startsWith("/auth/login") || pathname.startsWith("/auth/signup"))) {
+            return NextResponse.redirect(new URL(`https://${MAIN_DOMAIN}${pathname}${req.nextUrl.search}`, req.url));
+        }
+
+        // B. If we are on the main domain (recruitaitech.in or www.recruitaitech.in),
         // we redirect module paths to their respective subdomains.
         if (!subdomain && !isDev) {
             if (pathname.startsWith("/admin")) {
