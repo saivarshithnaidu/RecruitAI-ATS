@@ -59,6 +59,20 @@ export default withAuth(
             }
         }
 
+        // --- 2.5. SUBDOMAIN ENFORCEMENT ---
+        // If on main domain but visiting a path that should be on a subdomain -> Redirect to Subdomain
+        if (!subdomain && !isDev) {
+            if (pathname.startsWith("/admin")) {
+                return NextResponse.redirect(new URL(`https://admin.recruitaitech.in${pathname.replace("/admin", "") || "/"}`, req.url));
+            }
+            if (pathname.startsWith("/candidate")) {
+                return NextResponse.redirect(new URL(`https://candidate.recruitaitech.in${pathname.replace("/candidate", "") || "/"}`, req.url));
+            }
+            if (pathname.startsWith("/apply")) {
+                return NextResponse.redirect(new URL(`https://apply.recruitaitech.in${pathname.replace("/apply", "") || "/"}`, req.url));
+            }
+        }
+
         // --- 3. MODULE-SPECIFIC AUTHORIZATION ---
         // These checks run AFTER mapping
         

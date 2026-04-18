@@ -37,21 +37,21 @@ export default function Navbar() {
                         <div className="flex items-center space-x-4">
                             {!session ? (
                                 <>
-                                    <Link href="/apply" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md font-medium">
+                                    <a href="https://apply.recruitaitech.in" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md font-medium">
                                         Apply Now
-                                    </Link>
+                                    </a>
                                     <Link href="/auth/login" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md font-medium">
                                         Login
                                     </Link>
                                 </>
                             ) : (
                                 // If logged in on public page, provide button to go to dashboard
-                                <Link
-                                    href={session.user?.role === 'ADMIN' ? "/admin/dashboard" : "/candidate/application"}
+                                <a
+                                    href={session.user?.role === 'ADMIN' ? "https://admin.recruitaitech.in" : "https://candidate.recruitaitech.in"}
                                     className="bg-blue-600 text-white px-4 py-2 rounded-md font-medium hover:bg-blue-700"
                                 >
                                     Go to Dashboard
-                                </Link>
+                                </a>
                             )}
                         </div>
                     )}

@@ -37,9 +37,9 @@ export default function LandingNavbar() {
                     <Link href="/" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
                         Home
                     </Link>
-                    <Link href="/apply" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
+                    <a href="https://apply.recruitaitech.in" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
                         Apply
-                    </Link>
+                    </a>
                     <Link href="/features" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
                         Features
                     </Link>
@@ -48,12 +48,12 @@ export default function LandingNavbar() {
                 {/* Auth Buttons */}
                 <div className="flex items-center gap-4">
                     {session ? (
-                        <Link
-                            href={session.user?.role === "ADMIN" ? "/admin/dashboard" : "/candidate/application"}
+                        <a
+                            href={session.user?.role === "ADMIN" ? "https://admin.recruitaitech.in" : "https://candidate.recruitaitech.in"}
                             className="px-5 py-2.5 bg-gray-900 text-white font-medium rounded-full hover:bg-gray-800 transition shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-sm"
                         >
                             Dashboard
-                        </Link>
+                        </a>
                     ) : (
                         <>
                             <Link
