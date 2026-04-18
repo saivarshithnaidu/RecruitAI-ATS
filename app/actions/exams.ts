@@ -139,108 +139,157 @@ export async function assignExam(
     }
 
     try {
-        // Check if Exam is READY
-        const { data: examData } = await supabaseAdmin
-            .from('exams')
-            .select('status, title, duration_minutes')
-            .eq('id', examId)
-            .single();
-
-        if (!examData || (examData.status !== 'READY' && examData.status !== 'READY_FALLBACK')) {
-            return { error: `Exam is not verified (Status: ${examData?.status || 'Unknown'}). Please verify the exam first.` };
-        }
-
-        const assignments = candidateIds.map(cid => ({
-            exam_id: examId,
-            candidate_id: cid,
-            status: 'assigned',
-            scheduled_start_time: scheduled_start_time,
-            proctoring_config: proctoring_config
-        }));
-
-        const { error } = await supabaseAdmin
-            .from('exam_assignments')
-            .insert(assignments);
-
-        if (error) throw error;
-
-        // Update application status for these candidates
         for (const cid of candidateIds) {
-            const { data: user } = await supabaseAdmin.auth.admin.getUserById(cid);
-            if (user && user.user && user.user.email) {
-                // 1. Update App Status
-                await supabaseAdmin
-                    .from('applications')
-                    .update({ status: 'EXAM_ASSIGNED' })
-                    .eq('email', user.user.email);
-
-                // 2. Send Invite Email
-                const assignment = assignments.find(a => a.candidate_id === cid);
-                // Use assignment ID as the unique token for simplicity and reliability
-                // In a real scenario, we might use a separate hash.
-                // We point to a tracking URL: /api/invite?token=ASSIGNMENT_ID
-                const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL}/api/invite?token=${assignment?.exam_id}_${cid}`;
-                // Note: We need the specific assignment ID, but we just bulk inserted. 
-                // We should have returned data from insert. 
-
-                // Let's rely on fetching the specific assignment ID or just generic link for now to avoid complexity without refetching.
-                // BETTER: Fetch the specific assignment ID we just created.
-                const { data: specificAssignment } = await supabaseAdmin
-                    .from('exam_assignments')
-                    .select('id')
-                    .eq('exam_id', examId)
-                    .eq('candidate_id', cid)
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                    .single();
-
-                if (specificAssignment) {
-                    const trackedLink = `${process.env.NEXT_PUBLIC_APP_URL}/api/invite?id=${specificAssignment.id}`;
-
-                    try {
-                        const { sendEmail } = await import("@/lib/email");
-                        const { EmailTemplates } = await import("@/lib/email-templates");
-
-                        // Fetch user name (fallback if not in session context, but we have user object)
-                        // @ts-ignore
-                        const firstName = user.user.user_metadata?.full_name?.split(' ')[0] || user.user.name?.split(' ')[0] || "Candidate";
-
-                        const template = EmailTemplates.examAssigned(
-                            firstName,
-                            examData.title || "Technical Assessment",
-                            scheduled_start_time,
-                            examData.duration_minutes || 60,
-                            `${process.env.NEXT_PUBLIC_APP_URL}/auth/login` // Direct them to login, logic will guide them
-                        );
-
-                        await sendEmail({
-                            to: user.user.email,
-                            subject: template.subject,
-                            html: template.html
-                        });
-
-                        // Update tracking status
-                        await supabaseAdmin
-                            .from('exam_assignments')
-                            .update({ invite_status: 'sent', invite_sent_at: new Date().toISOString() })
-                            .eq('id', specificAssignment.id);
-
-                    } catch (emailErr) {
-                        console.error("Failed to send invite email:", emailErr);
-                    }
-
-
-                }
-            }
+            await systemAssignExam(examId, cid, scheduled_start_time, proctoring_config);
         }
-
         revalidatePath('/admin/exams');
         return { success: true };
-
     } catch (error: any) {
         console.error("Assign Exam Error:", error);
         return { error: error.message };
     }
+}
+
+/**
+ * Automated Exam Assignment (No Session Check)
+ * Used by ATS Auto-Decision logic.
+ */
+export async function systemAssignExam(
+    examId: string,
+    candidateId: string,
+    scheduled_start_time: string | null = null,
+    proctoring_config: any = { camera: false, mic: false, tab_switch: true, copy_paste: true }
+) {
+    console.log(`[SystemAssignExam] Assigning exam ${examId} to candidate ${candidateId}`);
+
+    // Check if Exam is READY
+    const { data: examData } = await supabaseAdmin
+        .from('exams')
+        .select('status, title, duration_minutes')
+        .eq('id', examId)
+        .single();
+
+    if (!examData || (examData.status !== 'READY' && examData.status !== 'READY_FALLBACK')) {
+        throw new Error(`Exam is not verified (Status: ${examData?.status || 'Unknown'}).`);
+    }
+
+    // 🚀 NEW: AUTO SLOT BOOKING
+    let assignedSlotId = scheduled_start_time ? null : null; // if time provided manually, don't auto-book unless matched
+    let autoStartTime = scheduled_start_time;
+
+    if (!scheduled_start_time) {
+        console.log(`[AutoAutomation] Attempting auto-slot booking for exam ${examId}`);
+        // 1. Fetch upcoming slots for this exam
+        const { data: slots } = await supabaseAdmin
+            .from('exam_slots')
+            .select('id, start_time, max_candidates')
+            .eq('exam_id', examId)
+            .gt('start_time', new Date().toISOString())
+            .order('start_time', { ascending: true });
+
+        if (slots && slots.length > 0) {
+            // Find first slot with capacity
+            for (const slot of slots) {
+                // Check capacity
+                const { count } = await supabaseAdmin
+                    .from('exam_assignments')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('slot_id', slot.id);
+
+                if ((count || 0) < slot.max_candidates) {
+                    assignedSlotId = slot.id;
+                    autoStartTime = slot.start_time;
+                    console.log(`[AutoAutomation] Auto-booked Slot ${slot.id} starting at ${slot.start_time}`);
+                    break;
+                }
+            }
+        }
+    }
+
+    // 1. Create Assignment
+    const { data: assignment, error } = await supabaseAdmin
+        .from('exam_assignments')
+        .insert({
+            exam_id: examId,
+            candidate_id: candidateId,
+            status: 'assigned',
+            scheduled_start_time: autoStartTime, // Use auto-time if booked
+            slot_id: assignedSlotId, // [NEW] Link Slot
+            proctoring_config: proctoring_config
+        })
+        .select()
+        .single();
+
+    if (error) throw error;
+
+    // 2. Fetch Candidate Details
+    const { data: user } = await supabaseAdmin.auth.admin.getUserById(candidateId);
+    if (!user || !user.user || !user.user.email) {
+        throw new Error("Candidate user record not found.");
+    }
+
+    const email = user.user.email;
+
+    // 3. Update Application Status
+    await supabaseAdmin
+        .from('applications')
+        .update({ status: 'EXAM_ASSIGNED' })
+        .eq('email', email);
+
+    // 4. Send Invite Email
+    try {
+        const { sendEmail } = await import("@/lib/email");
+        const { EmailTemplates } = await import("@/lib/email-templates");
+
+        // @ts-ignore
+        const firstName = user.user.user_metadata?.full_name?.split(' ')[0] || user.user.name?.split(' ')[0] || "Candidate";
+
+        const template = EmailTemplates.examAssigned(
+            firstName,
+            examData.title || "Technical Assessment",
+            autoStartTime, 
+            examData.duration_minutes || 60,
+            `${process.env.NEXT_PUBLIC_APP_URL}/auth/login`,
+            assignment.id
+        );
+
+        await sendEmail({
+            to: email,
+            subject: template.subject,
+            html: template.html
+        });
+
+        // Update tracking
+        await supabaseAdmin
+            .from('exam_assignments')
+            .update({ invite_status: 'sent', invite_sent_at: new Date().toISOString() })
+            .eq('id', assignment.id);
+
+    } catch (emailErr) {
+        console.error("Failed to send invite email:", emailErr);
+    }
+
+    return { success: true, assignmentId: assignment.id };
+}
+
+/**
+ * Finds the first READY exam matching the role or a general one.
+ */
+export async function findReadyExamForRole(role: string) {
+    const { data: exams } = await supabaseAdmin
+        .from('exams')
+        .select('id, role')
+        .in('status', ['READY', 'READY_FALLBACK'])
+        .order('created_at', { ascending: false });
+
+    if (!exams || exams.length === 0) return null;
+
+    // Try finding by role match
+    const roleMatch = exams.find(e => e.role.toLowerCase().includes(role.toLowerCase()));
+    if (roleMatch) return roleMatch.id;
+
+    // Fallback to most recent READY exam
+    return exams[0].id;
 }
 
 export async function verifyExam(examId: string) {
@@ -270,10 +319,23 @@ export async function verifyExam(examId: string) {
 // CANDIDATE ACTIONS
 // ----------------------------------------------------------------------------
 
-export async function getCandidateExam() {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-        return { error: "Unauthorized" };
+export async function getCandidateExam(assignmentIdOverride?: string, token?: string) {
+    let candidateId = "";
+    let targetAssignmentId = assignmentIdOverride;
+
+    if (token) {
+        const { verifyExamToken } = await import("@/lib/seb");
+        const payload = verifyExamToken(token);
+        if (!payload) return { error: "Invalid secure token." };
+        candidateId = payload.candidateId;
+        targetAssignmentId = payload.assignmentId;
+    } else {
+        const session = await getServerSession(authOptions);
+        if (!session || !session.user) {
+            return { error: "Unauthorized" };
+        }
+        // @ts-ignore
+        candidateId = session.user.id;
     }
 
     try {
@@ -283,6 +345,7 @@ export async function getCandidateExam() {
             .select(`
                 id,
                 exam_id,
+                candidate_id,
                 status,
                 started_at,
                 submitted_at,
@@ -304,14 +367,17 @@ export async function getCandidateExam() {
                     questions_data
                 )
             `)
-            .eq('candidate_id', session.user.id)
-            .in('status', ['assigned', 'in_progress', 'completed', 'passed', 'failed'])
+            .eq('candidate_id', candidateId)
+            // If targetAssignmentId provided (SEB flow), filter by it exactly
+            .filter('id', targetAssignmentId ? 'eq' : 'neq', targetAssignmentId || '00000000-0000-0000-0000-000000000000') 
+            .in('status', ['assigned', 'in_progress', 'completed', 'passed', 'failed', 'EXAM_SUBMITTED'])
             .order('created_at', { ascending: false })
             .limit(1)
             .single();
 
         if (error || !assignment) {
-            return { error: "No exam assigned." };
+            console.error("[GetCandidateExam] DB Error or Null:", error);
+            return { error: "No active exam found." };
         }
 
         // @ts-ignore
@@ -596,23 +662,52 @@ export async function submitExam(assignmentId: string, answers: Record<string, s
         // Update Application Status
         const { data: user } = await supabaseAdmin.auth.admin.getUserById(session.user.id);
         if (user && user.user) {
-            await supabaseAdmin
-                .from('applications')
-                .update({ status: resultStatus }) // e.g. 'completed'
-                .eq('email', user.user.email);
-
             // AUTO-PASS/FAIL LOGIC
             const passed = totalScore >= passMark;
-            const newStatus = passed ? 'INTERVIEW' : 'EXAM_FAILED';
+            
+            // Check for high violations (Auto Flagged)
+            const isFlagged = proctoringData?.flagged || (proctoringData?.tab_switches > 3);
+            
+            // If heavily flagged, we might keep status as 'EXAM_SUBMITTED' or 'UNDER_REVIEW' 
+            // instead of auto-passing to the next round.
+            let newStatus = passed ? 'INTERVIEW' : 'EXAM_FAILED';
+            
+            if (isFlagged && passed) {
+                console.log(`[AutoAutomation] Candidate ${user.user.email} passed but is FLAGGED. Setting to UNDER_REVIEW.`);
+                newStatus = 'EXAM_SUBMITTED'; // Admin needs to verify proctoring
+            }
 
-            // If passed, move to INTERVIEW
-            // If failed, move to EXAM_FAILED
             await supabaseAdmin
                 .from('applications')
-                .update({ status: newStatus })
+                .update({ 
+                    status: newStatus,
+                    ats_summary: isFlagged ? `PASSED (${totalScore}) but FLAGGED for violations. Please review logs.` : `Passed assessment with score ${totalScore}.`
+                })
                 .eq('email', user.user.email);
 
-            console.log(`[SubmitExam] User ${user.user.email} -> ${newStatus} (Score: ${totalScore}/${passMark})`);
+            // 🚀 Send Results Email
+            if (user.user.email) {
+                try {
+                    const { sendEmail } = await import("@/lib/email");
+                    const { EmailTemplates } = await import("@/lib/email-templates");
+                    
+                    // @ts-ignore
+                    const firstName = user.user.user_metadata?.full_name?.split(' ')[0] || user.user.name?.split(' ')[0] || "Candidate";
+                    const examTitle = assignment.exams?.title || "Technical Assessment";
+
+                    if (newStatus === 'INTERVIEW') {
+                        const template = EmailTemplates.examPassed(firstName, examTitle);
+                        await sendEmail({ to: user.user.email, subject: template.subject, html: template.html });
+                    } else if (newStatus === 'EXAM_FAILED') {
+                        const template = EmailTemplates.examFailed(firstName, examTitle);
+                        await sendEmail({ to: user.user.email, subject: template.subject, html: template.html });
+                    }
+                } catch (emailErr) {
+                    console.error("Failed to send result email:", emailErr);
+                }
+            }
+
+            console.log(`[SubmitExam] User ${user.user.email} -> ${newStatus} (Score: ${totalScore}/${passMark}, Flagged: ${isFlagged})`);
         }
 
         revalidatePath('/candidate/dashboard');
@@ -650,5 +745,50 @@ export async function getActiveExamSessions() {
         return { success: true, sessions: assignments };
     } catch (e: any) {
         return { error: e.message };
+    }
+}
+export async function saveAiExamTemplate(data: {
+    title: string;
+    description: string;
+    role: string;
+    difficulty: string;
+    questions: any[];
+}) {
+    const session = await getServerSession(authOptions);
+    // @ts-ignore
+    if (!session || session.user?.role !== 'ADMIN') {
+        return { error: "Unauthorized" };
+    }
+
+    try {
+        const { title, description, role, difficulty, questions } = data;
+
+        // Resolve Creator UUID
+        const creatorId = session.user.id;
+
+        const { data: exam, error } = await supabaseAdmin
+            .from('exams')
+            .insert({
+                title,
+                description,
+                role,
+                difficulty: difficulty.charAt(0).toUpperCase() + difficulty.slice(1),
+                duration_minutes: 60, // Default for AI generated
+                pass_mark: 40,        // Default
+                created_by: creatorId,
+                status: 'READY',       // Auto-ready since it's from AI Studio
+                questions_data: questions
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        revalidatePath('/admin/exams');
+        return { success: true, examId: exam.id };
+
+    } catch (error: any) {
+        console.error("[SaveAiTemplate] Error:", error);
+        return { error: error.message || "Failed to save template" };
     }
 }

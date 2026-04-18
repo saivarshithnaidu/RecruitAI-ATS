@@ -2,7 +2,11 @@ import React from 'react';
 import Link from 'next/link';
 
 export const metadata = {
-    title: 'Terms & Conditions – RecruitAI Tech',
+    title: 'Terms & Conditions | RecruitAI Tech – Platform Usage Rules',
+    description: 'Review the terms and conditions for using the RecruitAI Tech platform, including exam rules, eligibility criteria, and AI evaluation consent.',
+    alternates: {
+        canonical: "https://recruitaitech.in/terms-and-conditions",
+    },
 };
 
 export default function TermsPage() {

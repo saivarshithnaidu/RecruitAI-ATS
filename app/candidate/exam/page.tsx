@@ -7,8 +7,8 @@ import { redirect } from "next/navigation";
 
 export const dynamic = 'force-dynamic';
 
-export default async function CandidateExamPage() {
-    const res = await getCandidateExam();
+export default async function CandidateExamPage({ searchParams }: { searchParams: { id?: string, token?: string, secure_entry?: string } }) {
+    const res = await getCandidateExam(searchParams.id, searchParams.token);
 
     if (res.error || !res.exam) {
         return (
@@ -23,6 +23,22 @@ export default async function CandidateExamPage() {
     }
 
     const { exam } = res;
+
+    // 🛡️ SEB ENFORCEMENT
+    // Check if SEB is mandatory in proctoring config
+    const proctorConfig = exam?.proctoring_config || {};
+    const isSebMandatory = proctorConfig.seb_mandatory === true;
+    
+    // Check current browser
+    const { headers: nextHeaders } = await import("next/headers");
+    const userAgent = (await nextHeaders()).get("user-agent") || "";
+    const { isSebBrowser } = await import("@/lib/seb");
+    const usingSeb = isSebBrowser(userAgent);
+
+    if (isSebMandatory && !usingSeb && !searchParams.token) {
+        // Force redirect to the secure gate info page
+        redirect(`/candidate/exam/secure?id=${exam.id}`);
+    }
 
     // Handle Generation States
     // We check exam.exams.status (the exam definition) not just assignment status

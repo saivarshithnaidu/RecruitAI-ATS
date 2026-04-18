@@ -2,7 +2,11 @@ import React from 'react';
 import Link from 'next/link';
 
 export const metadata = {
-    title: 'Privacy Policy – RecruitAI Tech',
+    title: 'Privacy Policy | RecruitAI Tech – Your Data Privacy',
+    description: 'Read the RecruitAI Tech Privacy Policy to understand how we collect, use, and protect your personal and professional information during the recruitment process.',
+    alternates: {
+        canonical: "https://recruitaitech.in/privacy-policy",
+    },
 };
 
 export default function PrivacyPage() {

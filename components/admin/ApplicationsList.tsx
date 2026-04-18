@@ -1,4 +1,6 @@
 
+"use client";
+
 import { Fragment, useState } from 'react';
 import Link from 'next/link';
 import VerifyButton from '@/components/VerifyButton';

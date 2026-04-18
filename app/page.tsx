@@ -1,11 +1,41 @@
-"use client";
-
+import type { Metadata } from "next";
 import Link from "next/link";
 import LandingNavbar from "./components/LandingNavbar";
+
+export const metadata: Metadata = {
+  title: "RecruitAI – AI Hiring Platform with Online Exams & ATS",
+  description: "Advanced ATS, AI Exams, and Automated Interviews. RecruitAI is India's leading AI-driven hiring platform for merit-based evaluation and secure proctoring.",
+  alternates: {
+    canonical: "https://recruitaitech.in",
+  },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "RecruitAI",
+  "operatingSystem": "Web",
+  "applicationCategory": "BusinessApplication, RecruitmentSoftware",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "INR"
+  },
+  "description": "Next-generation AI hiring platform with automated exams, ATS, and smart proctoring.",
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.8",
+    "ratingCount": "100"
+  }
+};
 
 export default function LandingPage() {
   return (
     <div className="min-h-screen flex flex-col bg-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <LandingNavbar />
 
       {/* 1. HERO SECTION */}

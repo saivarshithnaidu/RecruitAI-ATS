@@ -126,40 +126,77 @@ export async function generateAtsScore(applicationId: string) {
 async function updateApplicationScore(id: string, score: number, summary: string, status: string) {
     console.log(`Updating DB for application ${id}: score=${score}, status=${status}`);
 
-    const { error } = await supabaseAdmin
+    // Determine Final Status based on Score Requirements
+    // ATS > 70 -> auto assign exam
+    // ATS 50–70 -> mark "Needs Review"
+    // ATS < 50 -> auto reject
+    let finalStatus = 'APPLIED';
+    if (status === 'COMPLETED') {
+        if (score >= 70) finalStatus = 'SHORTLISTED';
+        else if (score >= 50) finalStatus = 'NEEDS_REVIEW';
+        else finalStatus = 'REJECTED';
+    }
+
+    const { data: appData, error } = await supabaseAdmin
         .from('applications')
         .update({
-            // New camelCase fields as requested
             aiAtsScore: score,
             atsStatus: status,
-            // Keep legacy fields for backward compatibility if they exist
             ats_score: score,
             ats_summary: summary,
-            status: status === 'COMPLETED' ? (score >= 70 ? 'SHORTLISTED' : 'REJECTED') : status
+            status: finalStatus
         })
         .eq('id', id)
+        .select('user_id, role, full_name, email')
+        .single();
 
     if (error) {
-        console.warn("Primary DB Update Failed, checking for missing columns:", error.message);
-        // Resilient fallback for missing columns
-        if (error.code === '42703' || error.message.includes('column') || error.message.includes('aiAtsScore')) {
-            console.warn("Falling back to legacy columns.");
-            const { error: legacyError } = await supabaseAdmin
-                .from('applications')
-                .update({
-                    ats_score: score,
-                    ats_summary: summary,
-                    status: status === 'COMPLETED' ? (score >= 70 ? 'SHORTLISTED' : 'REJECTED') : status
-                })
-                .eq('id', id);
+        console.error("Critical DB Update Error:", error);
+        throw new Error("DB Update Failed: " + error.message);
+    }
 
-            if (legacyError) {
-                console.error("Legacy update failed too:", legacyError);
-                throw new Error("Legacy DB Update Failed: " + legacyError.message);
+    // 🚀 FULL AUTOMATION TRIGGER: AUTO EXAM ASSIGNMENT
+    if (finalStatus === 'SHORTLISTED' && appData?.user_id) {
+        console.log(`[AutoAutomation] Triggering auto-exam for ${appData.email} (Score: ${score})`);
+        
+        try {
+            const { findReadyExamForRole, systemAssignExam } = await import("./exams");
+            
+            // 1. Find suitable exam
+            const examId = await findReadyExamForRole(appData.role || "General");
+            
+            if (examId) {
+                await systemAssignExam(examId, appData.user_id);
+                console.log(`[AutoAutomation] Successfully auto-assigned exam ${examId}`);
+                
+                // Final Status update to reflect exam assigned
+                await supabaseAdmin
+                    .from('applications')
+                    .update({ status: 'EXAM_ASSIGNED' })
+                    .eq('id', id);
+            } else {
+                console.warn("[AutoAutomation] No READY exam found for role:", appData.role);
             }
-        } else {
-            console.error("Critical DB Update Error:", error);
-            throw new Error("DB Update Failed: " + error.message);
+        } catch (autoErr) {
+            console.error("[AutoAutomation] Failed to trigger auto-exam:", autoErr);
+        }
+    }
+
+    // 🚀 Automation: Email for Rejection
+    if (finalStatus === 'REJECTED' && appData?.email) {
+        try {
+            const { sendEmail } = await import("@/lib/email");
+            const { EmailTemplates } = await import("@/lib/email-templates");
+            const firstName = appData.full_name?.split(' ')[0] || "Candidate";
+            const template = EmailTemplates.applicationRejected(firstName, appData.role || "the position");
+            
+            await sendEmail({
+                to: appData.email,
+                subject: template.subject,
+                html: template.html
+            });
+        } catch (emailErr) {
+            console.error("Failed to send rejection email:", emailErr);
         }
     }
 

@@ -140,7 +140,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
                 },
                 profile: {
                     ...profile,
-                    profile_photo_url: finalPhotoUrl
+                    profile_photo_url: finalPhotoUrl,
+                    // Explicitly pass through these to be sure they are accessible
+                    addressStreet: profile?.address_street,
+                    addressCity: profile?.address_city,
+                    addressState: profile?.address_state,
+                    addressPincode: profile?.address_pincode,
+                    preferredRoles: profile?.preferred_roles
                 },
                 examResults: examResults || [],
                 interviews: interviews || [],

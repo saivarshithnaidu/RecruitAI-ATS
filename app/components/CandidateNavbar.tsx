@@ -11,13 +11,13 @@ export default function CandidateNavbar() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between h-16">
                     <div className="flex items-center">
-                        <Link href="/candidate/application" className="flex-shrink-0 flex items-center">
+                        <Link href="/candidate/dashboard" className="flex-shrink-0 flex items-center">
                             <span className="text-xl font-bold text-blue-600">RecruitAI</span>
                         </Link>
                     </div>
 
                     <div className="flex items-center space-x-4">
-                        <Link href="/candidate/application" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md font-medium">
+                        <Link href="/candidate/dashboard" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md font-medium">
                             My Application
                         </Link>
                         <Link href="/candidate/profile" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md font-medium">

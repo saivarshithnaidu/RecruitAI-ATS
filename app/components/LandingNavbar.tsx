@@ -40,7 +40,7 @@ export default function LandingNavbar() {
                     <Link href="/apply" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
                         Apply
                     </Link>
-                    <Link href="#features" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
+                    <Link href="/features" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition">
                         Features
                     </Link>
                 </div>

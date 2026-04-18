@@ -6,33 +6,46 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { ROLES } from '@/lib/roles';
 import { getProfile } from '@/app/actions/profile';
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Apply for Jobs | RecruitAI – AI Hiring Platform",
+  description: "Join the future of recruitment. Apply for job openings at RecruitAI Tech and showcase your skills through our AI-driven assessment platform.",
+  alternates: {
+    canonical: "https://recruitaitech.in/apply",
+  },
+};
+
 export default async function ApplyPage() {
     const session = await getServerSession(authOptions);
 
-    if (!session || !session.user) {
-        redirect("/auth/login?callbackUrl=/apply");
-    }
+    // REMOVED: Mandating login. Page is now public for guest viewing as per SEO Req.
+    // However, submission will still require a session or handle guest logic.
 
     // @ts-ignore
-    if (session.user.role === ROLES.ADMIN) {
+    if (session && session.user?.role === ROLES.ADMIN) {
         redirect("/admin/dashboard");
     }
 
-    // Check if candidate has an ACTIVE application
-    const { data: latestApp } = await supabaseAdmin
-        .from('applications')
-        .select('status')
-        .eq('user_id', session.user.id)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+    let latestApp = null;
+    if (session?.user?.id) {
+        // Check if candidate has an ACTIVE application
+        const { data } = await supabaseAdmin
+            .from('applications')
+            .select('status')
+            .eq('user_id', session.user.id)
+            .is('deleted_at', null)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        latestApp = data;
+    }
 
     // Terminal states that allow re-application
     const terminalStatuses = ['WITHDRAWN', 'REJECTED', 'EXAM_FAILED', 'DELETED', 'HIRED'];
 
     if (latestApp && !terminalStatuses.includes(latestApp.status)) {
-        redirect("/candidate/application");
+        redirect("/candidate/dashboard");
     }
 
     // Fetch existing profile to pre-fill

@@ -83,30 +83,36 @@ export const EmailTemplates = {
     }),
 
     // 6️⃣ EXAM ASSIGNED
-    examAssigned: (firstName: string, examTitle: string, scheduledTime: string | null, duration: number, link: string) => ({
-        subject: `Online Assessment Assigned – RecruitAI`,
+    examAssigned: (firstName: string, examTitle: string, scheduledTime: string | null, duration: number, link: string, assignmentId?: string) => ({
+        subject: `🔒 Secure Assessment Invitation: ${examTitle} – RecruitAI`,
         html: wrapContent(`
             <p>Hello ${firstName},</p>
-            <p>You have been assigned an online assessment: <strong>${examTitle}</strong>.</p>
-            <div style="background: #f9fafb; padding: 15px; border-radius: 5px; margin: 15px 0;">
+            <p>You have been assigned a secure technical assessment: <strong>${examTitle}</strong>.</p>
+            
+            <div style="background: #f9fafb; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #2563EB;">
                 ${scheduledTime
                 ? `<p style="margin: 5px 0;"><strong>Date & Time:</strong> ${new Date(scheduledTime).toLocaleString()}</p>`
                 : `<p style="margin: 5px 0; color: #d97706;"><strong>Action Required:</strong> Please login to select your preferred exam slot.</p>`
             }
                 <p style="margin: 5px 0;"><strong>Duration:</strong> ${duration} Minutes</p>
             </div>
-            <p><strong>Instructions:</strong></p>
-            <ul style="padding-left: 20px;">
-                ${scheduledTime
-                ? `<li>You can enter the assessment lobby 15 minutes before the scheduled start time.</li>`
-                : `<li>You must book a time slot before starting the exam.</li>`
-            }
-                <li>Ensure you have a stable internet connection.</li>
-                <li>Do not refresh the page or switch tabs unnecessarily during the exam.</li>
-            </ul>
-             <p>Please login to your dashboard to ${scheduledTime ? 'access the assessment' : 'book your slot'}.</p>
+
+            <div style="background-color: #fef2f2; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #fee2e2;">
+                <h4 style="margin-top: 0; color: #991b1b; display: flex; items-center: center; gap: 5px;">
+                    🛡️ Safety First: Safe Exam Browser (SEB) Required
+                </h4>
+                <p style="color: #450a0a; font-size: 13px;">To ensure a fair and secure assessment environment, this exam <strong>only</strong> works inside SEB.</p>
+                <ol style="color: #450a0a; font-size: 13px; padding-left: 20px; line-height: 1.6;">
+                    <li><strong>Install SEB:</strong> If not already installed, <a href="https://safeexambrowser.org/download_en.html" style="color: #b91c1c; font-weight: bold;">Download Here</a>.</li>
+                    <li><strong>Download Secure File:</strong> Get your unique entry key: <a href="${process.env.NEXT_PUBLIC_APP_URL}/api/exams/seb/download?id=${assignmentId}" style="color: #b91c1c; font-weight: bold;">[Download .seb File]</a>.</li>
+                    <li><strong>Launch:</strong> Double-click the downloaded <strong>.seb</strong> file to enter the secure exam environment.</li>
+                </ol>
+                <p style="color: #991b1b; font-size: 11px; margin-top: 10px; font-style: italic;">Note: Standard browsers like Chrome or Edge are not supported for this assessment.</p>
+            </div>
+
+            <p style="font-size: 14px;">If you have trouble downloading the file, you can also login to your dashboard to get it.</p>
             <br>
-             <a href="${link}" style="background-color: #2563EB; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Login to Dashboard</a>
+            <a href="${link}" style="background-color: #24292F; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Login to Dashboard</a>
         `)
     }),
 
@@ -175,5 +181,39 @@ export const EmailTemplates = {
             <br><br>
             <p style="font-size: 13px; color: #666;">If you have already completed your application, please ignore this email.</p>
         `)
-    })
+    }),
+
+    // 1️⃣2️⃣ SLOT MISSED
+    slotMissed: (firstName: string, examTitle: string, link: string) => ({
+        subject: `You Missed Your Assessment Slot – RecruitAI`,
+        html: wrapContent(`
+            <p>Hello ${firstName},</p>
+            <p>We noticed that you did not attend your scheduled assessment for <strong>${examTitle}</strong>.</p>
+            <p>Assessments are a critical part of our selection process. If you encountered technical difficulties or have a valid reason, please login to your dashboard to request a reschedule.</p>
+            <br>
+            <a href="${link}" style="background-color: #EF4444; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Login to Dashboard</a>
+            <br><br>
+            <p><strong>Note:</strong> You have a maximum of 2 rescheduling attempts.</p>
+        `)
+    }),
+
+    // 1️⃣3️⃣ CAMPAIGN OUTREACH
+    campaignInvite: (name: string | null, role: string | null) => ({
+        subject: `Technical Opportunity: ${role || 'Job Role'} – RecruitAI`,
+        html: wrapContent(`
+            <p>Hello ${name || 'Candidate'},</p>
+            <p>We've identified your background as a strong match for an active <strong>${role || 'Open Role'}</strong> position.</p>
+            
+            <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e2e8f0;">
+                <p style="margin-top: 0;">RecruitAI is an AI-powered talent platform helping industry leaders find top engineering talent. Based on your skill set, we'd love for you to join our platform.</p>
+                <div style="margin: 20px 0;">
+                    <a href="${process.env.NEXT_PUBLIC_APP_URL}/apply" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Apply Now & Take Assessment</a>
+                </div>
+            </div>
+
+            <p style="font-size: 14px; color: #64748b;">Join thousands of engineers who use RecruitAI to showcase their real-world skills transparently.</p>
+            <br>
+            <p>Best regards,<br>The RecruitAI Talent Team</p>
+        `)
+    }),
 };

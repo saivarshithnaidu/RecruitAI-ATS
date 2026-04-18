@@ -346,7 +346,7 @@ export async function submitUnifiedApplication(
             return { success: false, message: "System Error: Profile not found after update." };
         }
 
-        const { error: appError } = await supabaseAdmin
+        const { data: newApp, error: appError } = await supabaseAdmin
             .from('applications')
             .insert({
                 user_id: userId,
@@ -355,22 +355,45 @@ export async function submitUnifiedApplication(
                 email: email,
                 phone: phone,
                 resume_url: resumePath,
+                role: preferredRoles.split(',')[0].trim(), // Store primary role for automation
                 status: 'APPLIED',
                 ats_score: 0,
-                // accepted_terms_at: new Date().toISOString() // Temporarily commented out until DB migration is confirmed
-                // NOTE to USER: Uncomment the line below after running migration:
                 accepted_terms_at: new Date().toISOString()
-            });
+            })
+            .select('id')
+            .single();
 
         if (appError) {
             console.error("Application Insert Error:", appError);
             return { success: false, message: "Failed to submit application record." };
         }
 
-        revalidatePath('/dashboard');
-        revalidatePath('/candidate/application');
+        // 🚀 FULL AUTOMATION: Trigger Confirmation Email
+        if (email) {
+            try {
+                const { sendEmail } = await import("@/lib/email");
+                const { EmailTemplates } = await import("@/lib/email-templates");
+                const firstName = fullName.split(' ')[0] || "Candidate";
+                const template = EmailTemplates.applicationSubmitted(firstName, preferredRoles.split(',')[0].trim());
+                await sendEmail({ to: email, subject: template.subject, html: template.html });
+            } catch (emailErr) {
+                console.error("Automation: Failed to send confirmation email", emailErr);
+            }
+        }
 
-        return { success: true, message: "Application submitted successfully!" };
+        // 🚀 FULL AUTOMATION: Trigger ATS Screening
+        if (newApp?.id) {
+            console.log(`[AutoAutomation] Triggering instant ATS screening for app: ${newApp.id}`);
+            // Fire and forget (don't await to not slow down response)
+            import("@/app/actions/ats").then(({ generateAtsScore }) => {
+                generateAtsScore(newApp.id).catch(e => console.error("Auto ATS failed:", e));
+            });
+        }
+
+        revalidatePath('/dashboard');
+        revalidatePath('/candidate/dashboard');
+
+        return { success: true, message: "Application submitted successfully! Your profile is being screened by our AI." };
 
     } catch (err: any) {
         console.error("Submit Unified App Error:", err);

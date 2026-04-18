@@ -96,6 +96,10 @@ export default withAuth(
                 // Public paths that don't require authentication
                 if (
                     pathname === "/" ||
+                    pathname.startsWith("/apply") ||
+                    pathname.startsWith("/features") ||
+                    pathname.startsWith("/privacy-policy") ||
+                    pathname.startsWith("/terms-and-conditions") ||
                     pathname.startsWith("/auth") ||
                     pathname.startsWith("/invite") ||
                     pathname.startsWith("/api/auth") ||

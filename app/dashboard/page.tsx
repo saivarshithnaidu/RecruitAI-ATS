@@ -17,7 +17,7 @@ export default async function DashboardRouter() {
     if (role === ROLES.ADMIN) {
         redirect("/admin/dashboard");
     } else if (role === ROLES.CANDIDATE) {
-        redirect("/candidate/application");
+        redirect("/candidate/dashboard");
     } else {
         // Fallback for unknown roles
         redirect("/");

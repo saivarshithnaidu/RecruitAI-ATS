@@ -11,10 +11,10 @@ export default function Footer() {
                 </div>
 
                 <div className="flex flex-wrap justify-center gap-8 mb-8 text-gray-600">
-                    <Link href="/privacy" className="hover:text-blue-600 transition">
+                    <Link href="/privacy-policy" className="hover:text-blue-600 transition">
                         Privacy Policy
                     </Link>
-                    <Link href="/terms" className="hover:text-blue-600 transition">
+                    <Link href="/terms-and-conditions" className="hover:text-blue-600 transition">
                         Terms & Conditions
                     </Link>
                     <a href="mailto:support@recruitaitech.in" className="hover:text-blue-600 transition">
