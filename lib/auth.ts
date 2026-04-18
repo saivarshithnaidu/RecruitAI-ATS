@@ -216,5 +216,19 @@ export const authOptions: NextAuthOptions = {
     pages: {
         signIn: '/auth/login',
         error: '/auth/error', // Error code passed in query string as ?error=
+    },
+    cookies: {
+        sessionToken: {
+            name: `next-auth.session-token`,
+            options: {
+                httpOnly: true,
+                sameSite: 'lax',
+                path: '/',
+                secure: process.env.NODE_ENV === 'production',
+                domain: process.env.NODE_ENV === 'production' 
+                    ? '.recruitaitech.in' 
+                    : 'localhost'
+            }
+        }
     }
 }

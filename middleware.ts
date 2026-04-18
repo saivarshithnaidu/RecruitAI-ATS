@@ -1,112 +1,112 @@
 import { withAuth } from "next-auth/middleware"
 import { NextResponse } from "next/server"
-import jwt from "jsonwebtoken";
+
+/**
+ * RECRUITAI SUBDOMAIN MIDDLEWARE
+ * Handles:
+ * 1. Subdomain detection & Rewriting
+ * 2. Authorization (RBAC)
+ * 3. SEO (noindex for private modules)
+ * 4. Cross-domain session handling
+ */
 
 export default withAuth(
-    // @ts-ignore
     async function middleware(req) {
-        // @ts-ignore
-        let token = req.nextauth.token;
-        const authHeader = req.headers.get("authorization");
-        const pathname = req.nextUrl.pathname;
+        const host = req.headers.get("host") || "";
+        const { pathname } = req.nextUrl;
+        const url = req.nextUrl.clone();
 
-        // 0.1. Token Override (Custom Header Auth)
-        if (authHeader && authHeader.startsWith("Bearer ")) {
-            const tokenStr = authHeader.split(" ")[1];
-            try {
-                const secret = process.env.NEXTAUTH_SECRET || "";
-                // @ts-ignore
-                const decoded = jwt.verify(tokenStr, secret);
-                if (decoded && typeof decoded === 'object') {
-                    // Mock the NextAuth token structure
-                    token = {
-                        ...token,
-                        // @ts-ignore
-                        sub: decoded.sub as string,
-                        // @ts-ignore
-                        email: decoded.email,
-                        // @ts-ignore
-                        role: decoded.role
-                    } as any
-                }
-            } catch (err) {
-                console.error("Middleware Token Verification Failed:", err);
-                // Don't error out, just fallback to standard session check or fail later
-                // If this was an explicit API call expecting auth, it will fail below
+        // @ts-ignore
+        const token = req.nextauth.token;
+        const role = token?.role;
+
+        // --- 1. SUBDOMAIN DETECTION ---
+        const hostname = host.split(":")[0];
+        const isDev = hostname.includes("localhost") || hostname.includes("127.0.0.1") || hostname.includes("vercel.app");
+        
+        let subdomain = "";
+        if (!isDev) {
+            if (hostname.endsWith("recruitaitech.in") && hostname !== "recruitaitech.in") {
+                subdomain = hostname.replace(".recruitaitech.in", "");
+            }
+        } else {
+            // Dev: allow simulating subdomains with [sub].localhost (requires etc/hosts edit or wildcard DNS)
+            const parts = hostname.split(".");
+            if (parts.length > 1) {
+                subdomain = parts[0];
             }
         }
 
-        // @ts-ignore
-        const role = token?.role
+        // --- 2. REWRITE RULES ---
+        let response = NextResponse.next();
 
-
-        // 0. Automation/Internal API Protection
-        if (pathname.startsWith("/api/automation") || pathname.startsWith("/api/internal")) {
-            const secret = process.env.INTERNAL_AUTOMATION_SECRET
-            if (!secret || authHeader !== `Bearer ${secret}`) {
-                return NextResponse.json({ error: "Unauthorized automation request" }, { status: 401 })
+        if (subdomain === "admin") {
+            // Prevent recursive rewrites
+            if (!pathname.startsWith("/admin") && !pathname.startsWith("/api/admin")) {
+                response = NextResponse.rewrite(new URL(`/admin${pathname}`, req.url));
             }
-            return NextResponse.next()
+        } else if (subdomain === "candidate") {
+            if (!pathname.startsWith("/candidate") && !pathname.startsWith("/api/candidate")) {
+                response = NextResponse.rewrite(new URL(`/candidate${pathname}`, req.url));
+            }
+        } else if (subdomain === "apply") {
+            if (!pathname.startsWith("/apply")) {
+                response = NextResponse.rewrite(new URL(`/apply${pathname}`, req.url));
+            }
+        } else if (subdomain === "interview") {
+            if (!pathname.startsWith("/candidate/interview")) {
+                response = NextResponse.rewrite(new URL(`/candidate/interview${pathname}`, req.url));
+            }
         }
 
-
-        // 1. Admin Protection
-        if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
+        // --- 3. MODULE-SPECIFIC AUTHORIZATION ---
+        // These checks run AFTER mapping
+        
+        // Admin Module Protection
+        if (subdomain === "admin" || pathname.startsWith("/admin")) {
             if (role !== "ADMIN") {
-                if (pathname.startsWith("/api")) {
-                    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-                }
-                return NextResponse.redirect(new URL(role === "CANDIDATE" ? "/candidate/application" : "/", req.url))
+                return NextResponse.redirect(new URL(role === "CANDIDATE" ? "https://candidate.recruitaitech.in" : "https://recruitaitech.in/auth/login", req.url));
             }
         }
 
-        // 2. Candidate Protection
-        if (pathname.startsWith("/candidate") || pathname.startsWith("/api/candidate")) {
-            if (role !== "CANDIDATE") {
-                if (pathname.startsWith("/api")) {
-                    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-                }
-                return NextResponse.redirect(new URL(role === "ADMIN" ? "/admin/dashboard" : "/", req.url))
+        // Candidate Module Protection
+        if (subdomain === "candidate" || pathname.startsWith("/candidate")) {
+            if (role !== "CANDIDATE" && role !== "ADMIN") {
+                 return NextResponse.redirect(new URL("https://recruitaitech.in/auth/login", req.url));
             }
         }
 
-        // 3. Apply Route (Guests only ideally, or check duplicate)
-        if (pathname.startsWith("/apply")) {
-            if (role === "ADMIN") {
-                return NextResponse.redirect(new URL("/admin/dashboard", req.url))
-            }
-            if (role === "CANDIDATE") {
-                // Should check if already applied logic exists in page, but middleware can redirect generic Access
-                // We let the page handle the "already applied" check for granular control, 
-                // but generic candidates might just go to dashboard if they shouldn't apply again.
-                // For now, allow access so page logic can redirect if applied, or show form if not?
-                // User says: "If candidate already applied: Block /apply -> Redirect to /candidate/application"
-                // Middleware doesn't know DB state. So we leave it to page level, OR we redirect all candidates to dashboard?
-                // If we redirect all candidates, they can't apply! Wait. "Candidate can apply ONLY ONCE". 
-                // If they haven't applied, they need /apply.
-                // So middleware allows Candidates on /apply. 
-            }
+        // --- 4. SEO RULES (X-Robots-Tag) ---
+        if (["admin", "candidate", "interview"].includes(subdomain)) {
+            response.headers.set("X-Robots-Tag", "noindex, nofollow");
         }
+
+        return response;
     },
     {
         callbacks: {
             authorized: ({ req, token }) => {
+                const host = req.headers.get("host") || "";
                 const pathname = req.nextUrl.pathname;
+                
+                // Extract subdomain for authorization check
+                const hostname = host.split(":")[0];
+                let subdomain = "";
+                if (hostname.endsWith("recruitaitech.in") && hostname !== "recruitaitech.in") {
+                    subdomain = hostname.replace(".recruitaitech.in", "");
+                }
 
-                // Public paths that don't require authentication
+                // Public Routes
                 if (
+                    subdomain === "apply" ||
                     pathname === "/" ||
                     pathname.startsWith("/apply") ||
                     pathname.startsWith("/features") ||
                     pathname.startsWith("/privacy-policy") ||
                     pathname.startsWith("/terms-and-conditions") ||
                     pathname.startsWith("/auth") ||
-                    pathname.startsWith("/invite") ||
                     pathname.startsWith("/api/auth") ||
                     pathname.startsWith("/api/webhooks") ||
-                    pathname.startsWith("/api/automation") ||
-                    pathname.startsWith("/api/internal") ||
-                    pathname.startsWith("/api") ||
                     pathname.endsWith(".html") ||
                     pathname === "/robots.txt" ||
                     pathname === "/sitemap.xml"
@@ -114,7 +114,6 @@ export default withAuth(
                     return true;
                 }
 
-                // Require authentication for all other routes
                 return !!token;
             },
         },
@@ -125,12 +124,11 @@ export const config = {
     matcher: [
         /*
          * Match all request paths except for the ones starting with:
-         * - api/auth (auth routes)
          * - _next/static (static files)
          * - _next/image (image optimization files)
          * - favicon.ico (favicon file)
          * - public (public folder)
          */
-        "/((?!api/auth|api/webhooks|_next/static|_next/image|favicon.ico|public).*)",
+        "/((?!_next/static|_next/image|favicon.ico|public).*)",
     ]
 }
