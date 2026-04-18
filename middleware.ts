@@ -1,31 +1,17 @@
 import { withAuth } from "next-auth/middleware"
 import { NextResponse } from "next/server"
 
-/**
- * RECRUITAI SUBDOMAIN MIDDLEWARE
- * Handles:
- * 1. Subdomain detection & Rewriting
- * 2. Authorization (RBAC)
- * 3. SEO (noindex for private modules)
- * 4. Cross-domain session handling
- */
-
 export default withAuth(
     async function middleware(req) {
         const host = req.headers.get("host") || "";
         const { pathname } = req.nextUrl;
-        const url = req.nextUrl.clone();
+        const searchParams = req.nextUrl.search;
 
-        // @ts-ignore
-        const token = req.nextauth.token;
-        const role = token?.role;
-
-        // --- 1. HOST & SUBDOMAIN DETECTION ---
         const hostname = host.split(":")[0].toLowerCase();
         const MAIN_DOMAIN = "recruitaitech.in";
         const isDev = hostname.includes("localhost") || hostname.includes("127.0.0.1") || hostname.includes("vercel.app");
         
-        // Extract subdomain: [sub].recruitaitech.in or [sub].localhost
+        // 1. Determine Subdomain
         let subdomain = "";
         if (!isDev) {
             if (hostname.endsWith(MAIN_DOMAIN) && hostname !== MAIN_DOMAIN && hostname !== `www.${MAIN_DOMAIN}`) {
@@ -38,77 +24,72 @@ export default withAuth(
             }
         }
 
-        // --- 2. ENFORCEMENT REDIRECTS (Main Domain -> Subdomain & Auth -> Main Domain) ---
-        // A. If on a SUBDOMAIN and visiting /auth path -> Redirect to MAIN DOMAIN (to fix Google OAuth mismatch)
-        if (subdomain && !isDev && (pathname.startsWith("/auth/login") || pathname.startsWith("/auth/signup"))) {
-            return NextResponse.redirect(new URL(`https://${MAIN_DOMAIN}${pathname}${req.nextUrl.search}`, req.url));
-        }
+        // 2. TOKEN & PROTECTION
+        // @ts-ignore
+        const token = req.nextauth.token;
+        const role = token?.role;
 
-        // B. If we are on the main domain (recruitaitech.in or www.recruitaitech.in),
-        // we redirect module paths to their respective subdomains.
-        if (!subdomain && !isDev) {
-            if (pathname.startsWith("/admin")) {
-                const target = pathname.replace("/admin", "") || "/";
-                return NextResponse.redirect(new URL(`https://admin.${MAIN_DOMAIN}${target}`, req.url));
-            }
-            if (pathname.startsWith("/candidate")) {
-                const target = pathname.replace("/candidate", "") || "/";
-                return NextResponse.redirect(new URL(`https://candidate.${MAIN_DOMAIN}${target}`, req.url));
-            }
-            if (pathname.startsWith("/apply")) {
-                const target = pathname.replace("/apply", "") || "/";
-                return NextResponse.redirect(new URL(`https://apply.${MAIN_DOMAIN}${target}`, req.url));
-            }
-        }
-
-        // --- 3. SUBDOMAIN REWRITES (Subdomain -> Internal Path) ---
-        let response = NextResponse.next();
-
-        if (subdomain === "admin") {
-            // Map admin.domain.com/dashboard to /admin/dashboard
-            // EXCLUDE shared routes like /auth, /api/auth
-            if (!pathname.startsWith("/admin") && !pathname.startsWith("/api/admin") && !pathname.startsWith("/auth") && !pathname.startsWith("/api/auth")) {
-                response = NextResponse.rewrite(new URL(`/admin${pathname === "/" ? "/dashboard" : pathname}`, req.url));
-            }
-        } else if (subdomain === "candidate") {
-            // Map candidate.domain.com/dashboard to /candidate/dashboard
-            if (!pathname.startsWith("/candidate") && !pathname.startsWith("/api/candidate") && !pathname.startsWith("/auth") && !pathname.startsWith("/api/auth")) {
-                response = NextResponse.rewrite(new URL(`/candidate${pathname === "/" ? "/dashboard" : pathname}`, req.url));
-            }
-        } else if (subdomain === "apply") {
-            // Map apply.domain.com/ to /apply/
-            if (!pathname.startsWith("/apply") && !pathname.startsWith("/auth") && !pathname.startsWith("/api/auth")) {
-                response = NextResponse.rewrite(new URL(`/apply${pathname}`, req.url));
-            }
-        } else if (subdomain === "interview") {
-            // Map interview.domain.com/ to /candidate/interviews/
-            if (!pathname.startsWith("/candidate/interview") && !pathname.startsWith("/auth") && !pathname.startsWith("/api/auth")) {
-                const targetPath = pathname === "/" ? "/candidate/interviews" : `/candidate/interviews${pathname}`;
-                response = NextResponse.rewrite(new URL(targetPath, req.url));
-            }
-        }
-
-        // --- 3. MODULE-SPECIFIC AUTHORIZATION ---
-        // These checks run AFTER mapping
+        // --- 3. ENFORCEMENT & REDIRECTS ---
         
-        // --- 3. MODULE-SPECIFIC AUTHORIZATION ---
-        // These checks run AFTER mapping
-        
-        // Admin Module Protection
+        // A. Always serve AUTH on MAIN domain
+        if (subdomain && !isDev && (pathname.startsWith("/auth") || pathname.startsWith("/api/auth"))) {
+            return NextResponse.redirect(new URL(`https://${MAIN_DOMAIN}${pathname}${searchParams}`, req.url));
+        }
+
+        // B. CROSS-MODULE REDIRECTS (Force correct subdomain for module paths)
+        if (!isDev) {
+            // If someone hits /admin/* on ANY domain that is NOT admin.domain, redirect to admin subdomain
+            if (pathname.startsWith("/admin") && subdomain !== "admin") {
+                const targetPath = pathname.replace("/admin", "") || "/";
+                return NextResponse.redirect(new URL(`https://admin.${MAIN_DOMAIN}${targetPath}${searchParams}`, req.url));
+            }
+            // If someone hits /candidate/* on ANY domain that is NOT candidate.domain, redirect to candidate subdomain
+            if (pathname.startsWith("/candidate") && subdomain !== "candidate") {
+                const targetPath = pathname.replace("/candidate", "") || "/";
+                return NextResponse.redirect(new URL(`https://candidate.${MAIN_DOMAIN}${targetPath}${searchParams}`, req.url));
+            }
+            // If someone hits /apply/* on ANY domain that is NOT apply.domain, redirect to apply subdomain
+            if (pathname.startsWith("/apply") && subdomain !== "apply") {
+                const targetPath = pathname.replace("/apply", "") || "/";
+                return NextResponse.redirect(new URL(`https://apply.${MAIN_DOMAIN}${targetPath}${searchParams}`, req.url));
+            }
+        }
+
+        // C. ROLE ACCESS PROTECTION (Strict)
         if (subdomain === "admin" || pathname.startsWith("/admin")) {
             if (token && role !== "ADMIN") {
-                return NextResponse.redirect(new URL("https://candidate.recruitaitech.in/dashboard", req.url));
+                return NextResponse.redirect(new URL(`https://candidate.${MAIN_DOMAIN}/dashboard`, req.url));
             }
         }
-
-        // Candidate Module Protection
         if (subdomain === "candidate" || pathname.startsWith("/candidate")) {
              if (token && role !== "CANDIDATE" && role !== "ADMIN") {
-                  return NextResponse.redirect(new URL("https://admin.recruitaitech.in/dashboard", req.url));
+                  return NextResponse.redirect(new URL(`https://${MAIN_DOMAIN}/auth/login`, req.url));
              }
         }
 
-        // --- 4. SEO RULES (X-Robots-Tag) ---
+        // --- 4. REWRITES (Subdomain -> Internal Folder) ---
+        let response = NextResponse.next();
+
+        if (subdomain === "admin") {
+            // Strip '/admin' if it exists in the internal flow to avoid double prefixing
+            if (!pathname.startsWith("/admin") && !pathname.startsWith("/api")) {
+                 response = NextResponse.rewrite(new URL(`/admin${pathname === "/" ? "/dashboard" : pathname}${searchParams}`, req.url));
+            }
+        } else if (subdomain === "candidate") {
+            if (!pathname.startsWith("/candidate") && !pathname.startsWith("/api")) {
+                 response = NextResponse.rewrite(new URL(`/candidate${pathname === "/" ? "/dashboard" : pathname}${searchParams}`, req.url));
+            }
+        } else if (subdomain === "apply") {
+            if (!pathname.startsWith("/apply") && !pathname.startsWith("/api")) {
+                 response = NextResponse.rewrite(new URL(`/apply${pathname}${searchParams}`, req.url));
+            }
+        } else if (subdomain === "interview") {
+            if (!pathname.startsWith("/candidate/interviews") && !pathname.startsWith("/api")) {
+                 response = NextResponse.rewrite(new URL(`/candidate/interviews${pathname}${searchParams}`, req.url));
+            }
+        }
+
+        // SEO
         if (["admin", "candidate", "interview"].includes(subdomain)) {
             response.headers.set("X-Robots-Tag", "noindex, nofollow");
         }
@@ -134,28 +115,22 @@ export default withAuth(
                     subdomain = hostname.replace(`.${MAIN_DOMAIN}`, "");
                 }
 
-                // Root & Public Routes are always authorized (Middleware logic handles specific restrictions)
-                if (
+                // Public Routes list
+                const isPublic = 
                     subdomain === "apply" ||
                     subdomain === "interview" ||
                     pathname === "/" ||
-                    pathname === "/api/seb/config" ||
-                    pathname === "/candidate/exam/secure" ||
-                    (pathname === "/candidate/exam" && req.nextUrl.searchParams.has("token")) ||
-                    pathname.startsWith("/apply") ||
-                    pathname.startsWith("/features") ||
-                    pathname.startsWith("/privacy-policy") ||
-                    pathname.startsWith("/terms-and-conditions") ||
                     pathname.startsWith("/auth") ||
                     pathname.startsWith("/api/auth") ||
-                    pathname.startsWith("/api/webhooks") ||
-                    pathname.endsWith(".html") ||
+                    pathname.startsWith("/features") ||
+                    pathname.startsWith("/privacy-policy") ||
+                    pathname.startsWith("/terms-conditions") ||
+                    pathname.startsWith("/api/seb/config") ||
+                    pathname === "/candidate/exam/secure" ||
                     pathname === "/robots.txt" ||
-                    pathname === "/sitemap.xml"
-                ) {
-                    return true;
-                }
+                    pathname === "/sitemap.xml";
 
+                if (isPublic) return true;
                 return !!token;
             },
         },
@@ -164,13 +139,6 @@ export default withAuth(
 
 export const config = {
     matcher: [
-        /*
-         * Match all request paths except for the ones starting with:
-         * - _next/static (static files)
-         * - _next/image (image optimization files)
-         * - favicon.ico (favicon file)
-         * - public (public folder)
-         */
         "/((?!_next/static|_next/image|favicon.ico|public).*)",
     ]
 }

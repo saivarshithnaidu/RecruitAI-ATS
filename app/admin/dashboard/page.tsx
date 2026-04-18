@@ -33,22 +33,41 @@ export default function AdminDashboardPage() {
         try {
             const res = await fetch('/api/applications');
             const json = await res.json();
-            if (json.success) setApplications(json.data);
-            else setError(json.message);
+            
+            if (json.success) {
+                setApplications(json.data);
+            } else {
+                console.error("Dashboard: Applications fetch failed:", json.message);
+                setError(`Applications: ${json.message}`);
+                return;
+            }
 
             // Fetch Active Exams
-            const sessionsRes = await getActiveExamSessions();
-            if (sessionsRes.success) setActiveSessions(sessionsRes.sessions || []);
+            try {
+                const sessionsRes = await getActiveExamSessions();
+                if (sessionsRes.success) setActiveSessions(sessionsRes.sessions || []);
+                else console.warn("Dashboard: Sessions fetch failed:", sessionsRes.error);
+            } catch (e) {
+                console.error("Dashboard: Sessions action exception:", e);
+            }
 
             // Fetch Interview Data
+            try {
+                const cands = await getInteviewCandidates();
+                setInterviewCandidates(cands);
 
-            const cands = await getInteviewCandidates();
-            setInterviewCandidates(cands);
+                const ints = await getInterviews();
+                setInterviewsList(ints);
+            } catch (e) {
+                console.error("Dashboard: Interview actions exception:", e);
+            }
 
-            const ints = await getInterviews();
-            setInterviewsList(ints);
-
-        } catch (err) { setError('Error loading dashboard data'); } finally { setLoading(false); }
+        } catch (err: any) { 
+            console.error("Dashboard: Critical fetch error:", err);
+            setError(`Network/Internal Error: ${err.message}`); 
+        } finally { 
+            setLoading(false); 
+        }
     }
 
     useEffect(() => {
