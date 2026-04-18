@@ -20,65 +20,65 @@ export default withAuth(
         const token = req.nextauth.token;
         const role = token?.role;
 
-        // --- 1. SUBDOMAIN DETECTION ---
-        const hostname = host.split(":")[0];
+        // --- 1. HOST & SUBDOMAIN DETECTION ---
+        const hostname = host.split(":")[0].toLowerCase();
+        const MAIN_DOMAIN = "recruitaitech.in";
         const isDev = hostname.includes("localhost") || hostname.includes("127.0.0.1") || hostname.includes("vercel.app");
         
+        // Extract subdomain: [sub].recruitaitech.in or [sub].localhost
         let subdomain = "";
         if (!isDev) {
-            if (hostname.endsWith("recruitaitech.in") && hostname !== "recruitaitech.in") {
-                const parts = hostname.replace(".recruitaitech.in", "");
-                // Ignore 'www' - treat it as root
-                if (parts !== "www") {
-                    subdomain = parts;
-                }
+            if (hostname.endsWith(MAIN_DOMAIN) && hostname !== MAIN_DOMAIN && hostname !== `www.${MAIN_DOMAIN}`) {
+                subdomain = hostname.replace(`.${MAIN_DOMAIN}`, "");
             }
         } else {
-            // Dev: allow simulating subdomains with [sub].localhost
             const parts = hostname.split(".");
             if (parts.length > 1 && parts[0] !== "www") {
                 subdomain = parts[0];
             }
         }
 
-        // --- 2. REWRITE RULES ---
+        // --- 2. ENFORCEMENT REDIRECTS (Main Domain -> Subdomain) ---
+        // If we are on the main domain (recruitaitech.in or www.recruitaitech.in),
+        // we redirect module paths to their respective subdomains.
+        if (!subdomain && !isDev) {
+            if (pathname.startsWith("/admin")) {
+                const target = pathname.replace("/admin", "") || "/";
+                return NextResponse.redirect(new URL(`https://admin.${MAIN_DOMAIN}${target}`, req.url));
+            }
+            if (pathname.startsWith("/candidate")) {
+                const target = pathname.replace("/candidate", "") || "/";
+                return NextResponse.redirect(new URL(`https://candidate.${MAIN_DOMAIN}${target}`, req.url));
+            }
+            if (pathname.startsWith("/apply")) {
+                const target = pathname.replace("/apply", "") || "/";
+                return NextResponse.redirect(new URL(`https://apply.${MAIN_DOMAIN}${target}`, req.url));
+            }
+        }
+
+        // --- 3. SUBDOMAIN REWRITES (Subdomain -> Internal Path) ---
         let response = NextResponse.next();
 
         if (subdomain === "admin") {
+            // Map admin.domain.com/dashboard to /admin/dashboard
             if (!pathname.startsWith("/admin") && !pathname.startsWith("/api/admin")) {
-                response = NextResponse.rewrite(new URL(`/admin${pathname}`, req.url));
+                response = NextResponse.rewrite(new URL(`/admin${pathname === "/" ? "/dashboard" : pathname}`, req.url));
             }
         } else if (subdomain === "candidate") {
-            if (pathname === "/") {
-                // Special case: route root candidate subdomain to dashboard
-                response = NextResponse.rewrite(new URL(`/candidate/dashboard`, req.url));
-            } else if (!pathname.startsWith("/candidate") && !pathname.startsWith("/api/candidate")) {
-                response = NextResponse.rewrite(new URL(`/candidate${pathname}`, req.url));
+            // Map candidate.domain.com/dashboard to /candidate/dashboard
+            if (!pathname.startsWith("/candidate") && !pathname.startsWith("/api/candidate")) {
+                response = NextResponse.rewrite(new URL(`/candidate${pathname === "/" ? "/dashboard" : pathname}`, req.url));
             }
         } else if (subdomain === "apply") {
+            // Map apply.domain.com/ to /apply/
             if (!pathname.startsWith("/apply")) {
                 response = NextResponse.rewrite(new URL(`/apply${pathname}`, req.url));
             }
         } else if (subdomain === "interview") {
-            // Route interview subdomain to candidate/interviews
-            if (pathname === "/") {
-                response = NextResponse.rewrite(new URL(`/candidate/interviews`, req.url));
-            } else if (!pathname.startsWith("/candidate/interview")) {
-                response = NextResponse.rewrite(new URL(`/candidate/interviews${pathname}`, req.url));
-            }
-        }
-
-        // --- 2.5. SUBDOMAIN ENFORCEMENT ---
-        // If on main domain (or www) but visiting a path that belongs to a subdomain -> Redirect
-        if (!subdomain && !isDev) {
-            if (pathname.startsWith("/admin")) {
-                return NextResponse.redirect(new URL(`https://admin.recruitaitech.in${pathname.replace("/admin", "") || "/"}`, req.url));
-            }
-            if (pathname.startsWith("/candidate")) {
-                return NextResponse.redirect(new URL(`https://candidate.recruitaitech.in${pathname.replace("/candidate", "") || "/"}`, req.url));
-            }
-            if (pathname.startsWith("/apply")) {
-                return NextResponse.redirect(new URL(`https://apply.recruitaitech.in${pathname.replace("/apply", "") || "/"}`, req.url));
+            // Map interview.domain.com/ to /candidate/interviews/
+            if (!pathname.startsWith("/candidate/interview")) {
+                const targetPath = pathname === "/" ? "/candidate/interviews" : `/candidate/interviews${pathname}`;
+                response = NextResponse.rewrite(new URL(targetPath, req.url));
             }
         }
 
@@ -111,17 +111,18 @@ export default withAuth(
             authorized: ({ req, token }) => {
                 const host = req.headers.get("host") || "";
                 const pathname = req.nextUrl.pathname;
-                
-                // Extract subdomain for authorization check
-                const hostname = host.split(":")[0];
+                const hostname = host.split(":")[0].toLowerCase();
+                const MAIN_DOMAIN = "recruitaitech.in";
+
                 let subdomain = "";
-                if (hostname.endsWith("recruitaitech.in") && hostname !== "recruitaitech.in") {
-                    subdomain = hostname.replace(".recruitaitech.in", "");
+                if (hostname.endsWith(MAIN_DOMAIN) && hostname !== MAIN_DOMAIN && hostname !== `www.${MAIN_DOMAIN}`) {
+                    subdomain = hostname.replace(`.${MAIN_DOMAIN}`, "");
                 }
 
                 // Public Routes
                 if (
                     subdomain === "apply" ||
+                    subdomain === "interview" ||
                     pathname === "/" ||
                     pathname === "/api/seb/config" ||
                     pathname === "/candidate/exam/secure" ||
