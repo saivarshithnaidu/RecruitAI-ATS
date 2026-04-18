@@ -27,12 +27,16 @@ export default withAuth(
         let subdomain = "";
         if (!isDev) {
             if (hostname.endsWith("recruitaitech.in") && hostname !== "recruitaitech.in") {
-                subdomain = hostname.replace(".recruitaitech.in", "");
+                const parts = hostname.replace(".recruitaitech.in", "");
+                // Ignore 'www' - treat it as root
+                if (parts !== "www") {
+                    subdomain = parts;
+                }
             }
         } else {
-            // Dev: allow simulating subdomains with [sub].localhost (requires etc/hosts edit or wildcard DNS)
+            // Dev: allow simulating subdomains with [sub].localhost
             const parts = hostname.split(".");
-            if (parts.length > 1) {
+            if (parts.length > 1 && parts[0] !== "www") {
                 subdomain = parts[0];
             }
         }
@@ -41,12 +45,14 @@ export default withAuth(
         let response = NextResponse.next();
 
         if (subdomain === "admin") {
-            // Prevent recursive rewrites
             if (!pathname.startsWith("/admin") && !pathname.startsWith("/api/admin")) {
                 response = NextResponse.rewrite(new URL(`/admin${pathname}`, req.url));
             }
         } else if (subdomain === "candidate") {
-            if (!pathname.startsWith("/candidate") && !pathname.startsWith("/api/candidate")) {
+            if (pathname === "/") {
+                // Special case: route root candidate subdomain to dashboard
+                response = NextResponse.rewrite(new URL(`/candidate/dashboard`, req.url));
+            } else if (!pathname.startsWith("/candidate") && !pathname.startsWith("/api/candidate")) {
                 response = NextResponse.rewrite(new URL(`/candidate${pathname}`, req.url));
             }
         } else if (subdomain === "apply") {
@@ -54,13 +60,16 @@ export default withAuth(
                 response = NextResponse.rewrite(new URL(`/apply${pathname}`, req.url));
             }
         } else if (subdomain === "interview") {
-            if (!pathname.startsWith("/candidate/interview")) {
-                response = NextResponse.rewrite(new URL(`/candidate/interview${pathname}`, req.url));
+            // Route interview subdomain to candidate/interviews
+            if (pathname === "/") {
+                response = NextResponse.rewrite(new URL(`/candidate/interviews`, req.url));
+            } else if (!pathname.startsWith("/candidate/interview")) {
+                response = NextResponse.rewrite(new URL(`/candidate/interviews${pathname}`, req.url));
             }
         }
 
         // --- 2.5. SUBDOMAIN ENFORCEMENT ---
-        // If on main domain but visiting a path that should be on a subdomain -> Redirect to Subdomain
+        // If on main domain (or www) but visiting a path that belongs to a subdomain -> Redirect
         if (!subdomain && !isDev) {
             if (pathname.startsWith("/admin")) {
                 return NextResponse.redirect(new URL(`https://admin.recruitaitech.in${pathname.replace("/admin", "") || "/"}`, req.url));
