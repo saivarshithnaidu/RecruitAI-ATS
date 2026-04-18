@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateAtsScore } from "@/app/actions/ats";
-import { auth } from "@/auth";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function POST(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    const session = await auth();
-    if (!session || session.user.role !== 'ADMIN') {
+    const session = await getServerSession(authOptions);
+    if (!session || (session.user as any).role !== 'ADMIN') {
         return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
