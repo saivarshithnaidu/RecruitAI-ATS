@@ -85,18 +85,21 @@ export default withAuth(
         // --- 3. MODULE-SPECIFIC AUTHORIZATION ---
         // These checks run AFTER mapping
         
+        // --- 3. MODULE-SPECIFIC AUTHORIZATION ---
+        // These checks run AFTER mapping
+        
         // Admin Module Protection
         if (subdomain === "admin" || pathname.startsWith("/admin")) {
-            if (role !== "ADMIN") {
-                return NextResponse.redirect(new URL(role === "CANDIDATE" ? "https://candidate.recruitaitech.in" : "https://recruitaitech.in/auth/login", req.url));
+            if (token && role !== "ADMIN") {
+                return NextResponse.redirect(new URL("https://candidate.recruitaitech.in/dashboard", req.url));
             }
         }
 
         // Candidate Module Protection
         if (subdomain === "candidate" || pathname.startsWith("/candidate")) {
-            if (role !== "CANDIDATE" && role !== "ADMIN") {
-                 return NextResponse.redirect(new URL("https://recruitaitech.in/auth/login", req.url));
-            }
+             if (token && role !== "CANDIDATE" && role !== "ADMIN") {
+                  return NextResponse.redirect(new URL("https://admin.recruitaitech.in/dashboard", req.url));
+             }
         }
 
         // --- 4. SEO RULES (X-Robots-Tag) ---
@@ -107,6 +110,12 @@ export default withAuth(
         return response;
     },
     {
+        secret: process.env.NEXTAUTH_SECRET,
+        cookies: {
+            sessionToken: {
+                name: process.env.NODE_ENV === 'production' ? `__Secure-next-auth.session-token` : `next-auth.session-token`,
+            }
+        },
         callbacks: {
             authorized: ({ req, token }) => {
                 const host = req.headers.get("host") || "";
@@ -119,7 +128,7 @@ export default withAuth(
                     subdomain = hostname.replace(`.${MAIN_DOMAIN}`, "");
                 }
 
-                // Public Routes
+                // Root & Public Routes are always authorized (Middleware logic handles specific restrictions)
                 if (
                     subdomain === "apply" ||
                     subdomain === "interview" ||
