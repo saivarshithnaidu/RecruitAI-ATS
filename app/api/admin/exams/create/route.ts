@@ -50,13 +50,14 @@ export async function POST(req: NextRequest) {
         console.log(`Generating exam for ${role}...`);
 
         // 1. Generate Questions (Synchronous)
-        let sections: any[] = [];
+        let questions: any[] = [];
         try {
             const aiResult = await generateExamPaper(role, [role], difficulty);
-            sections = aiResult; // generateExamPaper returns array directly
+            // Support both direct array and { questions: [] } structure
+            questions = Array.isArray(aiResult) ? aiResult : (aiResult.questions || []);
 
-            if (!Array.isArray(sections) || sections.length === 0) {
-                throw new Error("No sections generated from AI.");
+            if (questions.length === 0) {
+                throw new Error("No questions generated from AI.");
             }
         } catch (aiError: any) {
             console.error("AI Generation Failed:", aiError);
@@ -75,7 +76,7 @@ export async function POST(req: NextRequest) {
                 pass_mark: Number(pass_mark),
                 created_by: session.user.id,
                 status: 'DRAFT',
-                questions_data: sections // Store full AI structure
+                questions_data: questions // Store full AI structure
             })
             .select()
             .single();

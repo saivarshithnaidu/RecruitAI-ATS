@@ -47,11 +47,12 @@ export async function POST(req: NextRequest) {
         // 1.5 Verify Exam Details
         const { data: examData, error: examFetchError } = await supabaseAdmin
             .from('exams')
-            .select('id, name, skill, status')
+            .select('id, title, role, status')
             .eq('id', exam_id)
             .single();
 
         if (examFetchError || !examData) {
+            console.error("Exam Fetch Error:", examFetchError);
             return NextResponse.json({ error: "Exam not found." }, { status: 404 });
         }
 
@@ -85,7 +86,7 @@ export async function POST(req: NextRequest) {
         await sendExamAssignmentEmail(
             userProfile.email,
             userProfile.full_name || 'Candidate',
-            examData.name || `${examData.skill} Assessment`,
+            examData.title || `${examData.role} Assessment`,
             sebConfigLink,
             expiryDate
         );
