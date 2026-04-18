@@ -114,6 +114,9 @@ export default withAuth(
                 if (
                     subdomain === "apply" ||
                     pathname === "/" ||
+                    pathname === "/api/seb/config" ||
+                    pathname === "/candidate/exam/secure" ||
+                    (pathname === "/candidate/exam" && req.nextUrl.searchParams.has("token")) ||
                     pathname.startsWith("/apply") ||
                     pathname.startsWith("/features") ||
                     pathname.startsWith("/privacy-policy") ||

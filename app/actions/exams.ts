@@ -344,6 +344,7 @@ export async function getCandidateExam(assignmentIdOverride?: string, token?: st
             .from('exam_assignments')
             .select(`
                 id,
+                created_at,
                 exam_id,
                 candidate_id,
                 status,
@@ -378,6 +379,28 @@ export async function getCandidateExam(assignmentIdOverride?: string, token?: st
         if (error || !assignment) {
             console.error("[GetCandidateExam] DB Error or Null:", error);
             return { error: "No active exam found." };
+        }
+
+        // --- EXPIRY CHECK ---
+        // Default 24h expiry if not specified. 
+        // In a real app, we'd store 'expires_at' in the DB.
+        const expiryHrs = 24; 
+        const createdAt = new Date(assignment.created_at).getTime();
+        const now = new Date().getTime();
+        const isExpired = (now - createdAt) > (expiryHrs * 3600 * 1000);
+
+        if (isExpired && assignment.status === 'assigned') {
+            // Auto mark as expired in DB
+            await supabaseAdmin
+                .from('exam_assignments')
+                .update({ status: 'expired' })
+                .eq('id', assignment.id);
+            
+            return { error: "This exam assignment has expired." };
+        }
+
+        if (assignment.status === 'expired') {
+            return { error: "This exam assignment has expired." };
         }
 
         // @ts-ignore
@@ -423,9 +446,20 @@ export async function getCandidateExam(assignmentIdOverride?: string, token?: st
     }
 }
 
-export async function startExam(assignmentId: string) {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) return { error: "Unauthorized" };
+export async function startExam(assignmentId: string, token?: string) {
+    let candidateId = "";
+
+    if (token) {
+        const { verifyExamToken } = await import("@/lib/seb");
+        const payload = verifyExamToken(token);
+        if (!payload) return { error: "Invalid secure token." };
+        if (payload.assignmentId !== assignmentId) return { error: "Token assignment mismatch." };
+        candidateId = payload.candidateId;
+    } else {
+        const session = await getServerSession(authOptions);
+        if (!session || !session.user) return { error: "Unauthorized" };
+        candidateId = session.user.id;
+    }
 
     const { data: assignment } = await supabaseAdmin
         .from('exam_assignments')
@@ -438,33 +472,11 @@ export async function startExam(assignmentId: string) {
         .eq('id', assignmentId)
         .single();
 
-    if (!assignment || assignment.candidate_id !== session.user.id) {
+    if (!assignment || assignment.candidate_id !== candidateId) {
         return { error: "Access denied" };
     }
 
     if (assignment.status === 'assigned') {
-        // SCHEDULING CHECK
-        if (assignment.scheduled_start_time) {
-            const scheduledInfo = new Date(assignment.scheduled_start_time);
-            const now = new Date();
-            const timeDiff = scheduledInfo.getTime() - now.getTime();
-            const minutesUntilStart = timeDiff / (1000 * 60);
-
-            // Allow 15 mins early
-            if (minutesUntilStart > 15) {
-                return { error: `This exam is scheduled for ${scheduledInfo.toLocaleString()}. You can enter 15 minutes before the start time.` };
-            }
-
-            // SCHEDULING CHECK: LATE ENTRY / EXAM CLOSED
-            // Calculate Duration (Override > Exam Default > 60)
-            const durationMins = assignment.duration_override_minutes || assignment.exams?.duration_minutes || 60;
-            const endTime = new Date(scheduledInfo.getTime() + (durationMins * 60 * 1000));
-
-            if (now > endTime) {
-                return { error: "This exam session has ended. Please contact the administrator." };
-            }
-        }
-
         const { error } = await supabaseAdmin
             .from('exam_assignments')
             .update({
@@ -480,20 +492,17 @@ export async function startExam(assignmentId: string) {
             assignment_id: assignmentId,
             status: 'active',
             last_heartbeat: new Date().toISOString(),
-            // Default values for others are handled by DB or explicit logic
         });
     }
 
-    // 1. Check for New JSON Structure (3 Sections)
-    // @ts-ignore
+    // Sanitize and return questions...
     const questionsData = assignment.exams?.questions_data;
     if (questionsData && Array.isArray(questionsData)) {
-        // SANITIZE: Remove correct answers
         const sanitizedSections = questionsData.map((section: any) => ({
             ...section,
             questions: section.questions.map((q: any) => {
                 const { correct_answer, ...safeQuestion } = q;
-                return safeQuestion; // Return question WITHOUT correct_answer
+                return safeQuestion;
             })
         }));
 
@@ -501,17 +510,15 @@ export async function startExam(assignmentId: string) {
             success: true,
             sections: sanitizedSections,
             started_at: assignment.started_at || new Date().toISOString(),
-            isComplex: true // Flag for frontend to use new UI
+            isComplex: true
         };
     }
 
-    // 2. Legacy Fallback
     const { data: questions } = await supabaseAdmin
         .from('exam_questions')
         .select('id, question, options, type, marks')
         .eq('exam_id', assignment.exam_id);
 
-    // Parse options if they are strings
     const parsedQuestions = questions?.map(q => ({
         ...q,
         options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options
@@ -520,21 +527,32 @@ export async function startExam(assignmentId: string) {
     return { success: true, questions: parsedQuestions, started_at: assignment.started_at || new Date().toISOString() };
 }
 
-export async function submitExam(assignmentId: string, answers: Record<string, string>, proctoringData?: any) {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) return { error: "Unauthorized" };
+export async function submitExam(assignmentId: string, answers: Record<string, string>, proctoringData?: any, token?: string) {
+    let candidateId = "";
+
+    if (token) {
+        const { verifyExamToken } = await import("@/lib/seb");
+        const payload = verifyExamToken(token);
+        if (!payload) return { error: "Invalid secure token." };
+        if (payload.assignmentId !== assignmentId) return { error: "Token assignment mismatch." };
+        candidateId = payload.candidateId;
+    } else {
+        const session = await getServerSession(authOptions);
+        if (!session || !session.user) return { error: "Unauthorized" };
+        candidateId = session.user.id;
+    }
 
     try {
-        // Fetch assignment + exam data
         const { data: assignment } = await supabaseAdmin
             .from('exam_assignments')
             .select('*, exams(pass_mark, questions_data)')
             .eq('id', assignmentId)
             .single();
 
-        if (!assignment || assignment.candidate_id !== session.user.id) {
+        if (!assignment || assignment.candidate_id !== candidateId) {
             return { error: "Access denied" };
         }
+        // ... rest of evaluation logic remains same
 
         if (['completed', 'passed', 'failed', 'submitted', 'EXAM_SUBMITTED'].includes(assignment.status)) {
             return { success: true, status: assignment.status, message: "Exam already submitted." };
@@ -653,14 +671,14 @@ export async function submitExam(assignmentId: string, answers: Record<string, s
         if (proctoringData) {
             await supabaseAdmin.from('exam_proctor_logs').insert({
                 exam_assignment_id: assignmentId,
-                candidate_id: session.user.id,
+                candidate_id: candidateId,
                 event_type: 'SUMMARY',
                 details: proctoringData
             });
         }
 
         // Update Application Status
-        const { data: user } = await supabaseAdmin.auth.admin.getUserById(session.user.id);
+        const { data: user } = await supabaseAdmin.auth.admin.getUserById(candidateId);
         if (user && user.user) {
             // AUTO-PASS/FAIL LOGIC
             const passed = totalScore >= passMark;

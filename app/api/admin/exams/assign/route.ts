@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { generateExamToken } from "@/lib/seb";
+import { sendExamAssignmentEmail } from "@/lib/mail";
 
 export async function POST(req: NextRequest) {
     try {
@@ -13,15 +15,22 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { exam_id, candidate_id, scheduled_start_time, proctoring_config } = body;
+        const { exam_id, candidate_id, scheduled_start_time, proctoring_config, expires_in_hrs } = body;
 
         if (!exam_id || !candidate_id) {
             return NextResponse.json({ error: "Missing exam_id or candidate_id" }, { status: 400 });
         }
 
         // 1. Verify Candidate exists and get email
-        // We might need to query 'profiles' or 'auth.users' via admin.
-        // Assuming candidate_id is the user_id (uuid).
+        const { data: userProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('email, full_name')
+            .eq('id', candidate_id)
+            .single();
+
+        if (!userProfile) {
+            return NextResponse.json({ error: "Candidate profile not found." }, { status: 404 });
+        }
 
         // Check if already assigned
         const { data: existing } = await supabaseAdmin
@@ -35,10 +44,10 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Candidate already assigned to this exam." }, { status: 400 });
         }
 
-        // 1.5 Verify Exam Status
+        // 1.5 Verify Exam Details
         const { data: examData, error: examFetchError } = await supabaseAdmin
             .from('exams')
-            .select('status, questions_data, questions:exam_questions(count)')
+            .select('id, name, skill, status')
             .eq('id', exam_id)
             .single();
 
@@ -46,73 +55,52 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Exam not found." }, { status: 404 });
         }
 
-        if (examData.status !== 'READY' && examData.status !== 'READY_FALLBACK') {
-            return NextResponse.json({
-                error: `Cannot assign exam. Status is ${examData.status}. Please wait for AI generation.`
-            }, { status: 400 });
-        }
-
-        // Check for questions in BOTH New JSON format and Legacy Table
-        // @ts-ignore
-        const hasJsonQuestions = examData.questions_data && Array.isArray(examData.questions_data) && examData.questions_data.length > 0;
-        // @ts-ignore
-        const hasLegacyQuestions = examData.questions && examData.questions[0] && examData.questions[0].count > 0;
-
-        if (!hasJsonQuestions && !hasLegacyQuestions) {
-            return NextResponse.json({ error: "Exam has no questions. Please Retry Generation." }, { status: 400 });
-        }
-
         // 2. Insert Assignment
-        const { error: assignError } = await supabaseAdmin
+        const { data: assignment, error: assignError } = await supabaseAdmin
             .from('exam_assignments')
             .insert({
                 exam_id,
                 candidate_id,
                 status: 'assigned',
                 scheduled_start_time: scheduled_start_time || null,
-                proctoring_config: proctoring_config || { camera: false, mic: false, tab_switch: true, copy_paste: true }
-            });
-
-        if (assignError) {
-            console.error("Assignment Insert Error:", assignError);
-            return NextResponse.json({ error: assignError.message }, { status: 500 });
-        }
-
-        // 3. Update Application Status
-        // We need to find the application record for this candidate.
-        // Option A: Update by user_id if column exists.
-        // Option B: Get email from profile and update by email.
-
-        // Let's try user_id in applications first (it was added recently in schematic thoughts, but check schema).
-        // If 'applications' table has 'user_id', use it. Else fetch email.
-
-        // Checking schema via assumption (since I can't read sql right now easily without view_file):
-        // Previously used 'email' for updating status in `app/actions/exams.ts`.
-        // Let's safe-guard: Get user email from `auth.admin` or `profiles`.
-
-        const { data: userProfile } = await supabaseAdmin
-            .from('profiles')
-            .select('email')
-            .eq('id', candidate_id)
+                proctoring_config: proctoring_config || { camera: true, mic: true, tab_switch: true, copy_paste: false }
+            })
+            .select()
             .single();
 
-        if (userProfile?.email) {
-            await supabaseAdmin
-                .from('applications')
-                .update({ status: 'EXAM_ASSIGNED' })
-                .eq('email', userProfile.email);
-        } else {
-            // Fallback if no profile, try getting user from Auth api
-            const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(candidate_id);
-            if (authUser?.user?.email) {
-                await supabaseAdmin
-                    .from('applications')
-                    .update({ status: 'EXAM_ASSIGNED' })
-                    .eq('email', authUser.user.email);
-            }
+        if (assignError || !assignment) {
+            console.error("Assignment Insert Error:", assignError);
+            return NextResponse.json({ error: assignError?.message || "Failed to create assignment" }, { status: 500 });
         }
 
-        return NextResponse.json({ success: true });
+        // 3. Generate SEB Secure Token
+        const expirySeconds = (expires_in_hrs || 24) * 3600;
+        const token = generateExamToken(assignment.id, candidate_id, expirySeconds);
+        const expiryDate = new Date(Date.now() + expirySeconds * 1000).toLocaleString();
+
+        // 4. Send SEB Email
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://recruitaitech.in";
+        const sebConfigLink = `${baseUrl}/api/seb/config?token=${token}`;
+        
+        await sendExamAssignmentEmail(
+            userProfile.email,
+            userProfile.full_name || 'Candidate',
+            examData.name || `${examData.skill} Assessment`,
+            sebConfigLink,
+            expiryDate
+        );
+
+        // 5. Update Application Status
+        await supabaseAdmin
+            .from('applications')
+            .update({ status: 'EXAM_ASSIGNED' })
+            .eq('email', userProfile.email);
+
+        return NextResponse.json({ 
+            success: true, 
+            message: "Exam assigned and SEB instructions sent.",
+            assignment_id: assignment.id 
+        });
 
     } catch (error: any) {
         console.error("Assign Exam API Error:", error);

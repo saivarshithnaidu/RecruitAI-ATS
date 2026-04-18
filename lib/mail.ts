@@ -102,3 +102,54 @@ export async function sendVerificationEmail(to: string, otp: string) {
         return false;
     }
 }
+
+export async function sendExamAssignmentEmail(to: string, name: string, examName: string, sebConfigLink: string, expiryTime: string) {
+    const isConfigured = SMTP_USER && SMTP_PASS;
+
+    if (!isConfigured) {
+        console.log(`[MOCK EXAM EMAIL] To: ${to}, Exam: ${examName}, Link: ${sebConfigLink}`);
+        return true;
+    }
+
+    try {
+        const html = `
+            <div style="font-family: sans-serif; padding: 20px; color: #333;">
+                <h2 style="color: #2563eb;">Exam Assigned: ${examName}</h2>
+                <p>Hello ${name},</p>
+                <p>You have been assigned a secure exam on the RecruitAI platform.</p>
+                
+                <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                    <p><strong>Instructions:</strong></p>
+                    <ol>
+                        <li>This exam requires <strong>Safe Exam Browser (SEB)</strong>.</li>
+                        <li>If you don't have it, download it from <a href="https://safeexambrowser.org/download_en.html">here</a>.</li>
+                        <li>Download your secure exam configuration below.</li>
+                        <li>Open the downloaded <code>.seb</code> file to launch the exam environment.</li>
+                    </ol>
+                </div>
+
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="${sebConfigLink}" style="background: #2563eb; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Download Exam Config (.seb)</a>
+                </div>
+
+                <p style="color: #ef4444; font-weight: bold;">Expiry: This link is valid until ${expiryTime}.</p>
+                
+                <p>Ensure you have a stable internet connection and a working webcam/microphone for proctoring.</p>
+                
+                <p>Best regards,<br/>RecruitAI Team</p>
+            </div>
+        `;
+
+        await transporter.sendMail({
+            from: EMAIL_FROM,
+            to,
+            subject: `Action Required: Secure Exam Assigned - ${examName}`,
+            html,
+        });
+
+        return true;
+    } catch (error) {
+        console.error("Error sending exam email:", error);
+        return false;
+    }
+}
