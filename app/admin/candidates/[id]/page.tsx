@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { ROLES } from '@/lib/roles';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 // Helper for skill tags
 const SkillTag = ({ skill }: { skill: string }) => (
@@ -67,12 +68,12 @@ export default function CandidateProfilePage({ params }: { params: Promise<{ id:
             });
             const json = await res.json();
             if (!json.success) {
-                alert("Failed to save notes: " + json.message);
+                toast.error("Failed to save notes: " + json.message);
             } else {
-                console.log("Notes saved successfully");
+                toast.success("Notes saved successfully");
             }
         } catch (e) {
-            alert("Error saving notes");
+            toast.error("Error saving notes");
         } finally {
             setSavingNotes(false);
         }
@@ -105,6 +106,9 @@ export default function CandidateProfilePage({ params }: { params: Promise<{ id:
                                 src={profile?.profile_photo_url || "/default-avatar.png"}
                                 alt={application.full_name}
                                 className="w-full h-full object-cover"
+                                onError={(e) => {
+                                    (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(application.full_name)}&background=random&color=fff`;
+                                }}
                             />
                         </div>
                         {profile?.verification_status === 'verified' && (
@@ -353,8 +357,8 @@ export default function CandidateProfilePage({ params }: { params: Promise<{ id:
                                                 if (!score) return;
 
                                                 try {
-                                                    const res = await fetch(`/api/admin/candidate/${id}/ats-score`, {
-                                                        method: 'POST',
+                                                    const res = await fetch(`/api/admin/candidates/${id}/manual-ats`, {
+                                                        method: 'PATCH',
                                                         headers: { 
                                                             'Content-Type': 'application/json'
                                                         },
@@ -362,12 +366,12 @@ export default function CandidateProfilePage({ params }: { params: Promise<{ id:
                                                     });
                                                     const json = await res.json();
                                                     if (json.success) {
-                                                        alert('Score saved & Profile Updated!');
+                                                        toast.success('Score saved & Profile Updated!');
                                                         handleRefresh(); 
                                                     } else {
-                                                        alert('Backend Error: ' + json.message);
+                                                        toast.error('Backend Error: ' + json.message);
                                                     }
-                                                } catch (e) { alert('Network connection lost.'); }
+                                                } catch (e) { toast.error('Network connection lost.'); }
                                             }}
                                             className="px-6 py-2 bg-orange-600 text-white text-[10px] font-black uppercase rounded-lg hover:bg-orange-700 shadow-md transform active:scale-95 transition-all"
                                         >
@@ -390,12 +394,13 @@ export default function CandidateProfilePage({ params }: { params: Promise<{ id:
                                                 const res = await fetch(`/api/admin/candidates/${id}/analyze`, { method: 'POST' });
                                                 const json = await res.json();
                                                 if (json.success) {
+                                                    toast.success("AI Analysis complete!");
                                                     handleRefresh();
                                                 } else {
-                                                    alert(json.message || "AI Analysis failed to initiate.");
+                                                    toast.error(json.message || "AI Analysis failed to initiate.");
                                                 }
                                             } catch (err) {
-                                                alert("Network error during AI analysis.");
+                                                toast.error("Network error during AI analysis.");
                                             } finally {
                                                 btn.disabled = false;
                                                 btn.innerHTML = originalText;
@@ -469,37 +474,15 @@ export default function CandidateProfilePage({ params }: { params: Promise<{ id:
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
                                 ></textarea>
-                                <div className="flex justify-end mt-4">
-                                    <button
-                                        onClick={async () => {
-                                            setSavingNotes(true);
-                                            try {
-                                                const res = await fetch(`/api/admin/candidate/${id}/notes`, {
-                                                    method: 'POST',
-                                                    headers: { 
-                                                        'Content-Type': 'application/json',
-                                                        'Authorization': 'Bearer session'
-                                                    },
-                                                    body: JSON.stringify({ notes })
-                                                });
-                                                const json = await res.json();
-                                                if (json.success) {
-                                                    alert("Internal notes synchronized!");
-                                                } else {
-                                                    alert("Persistence failure: " + json.message);
-                                                }
-                                            } catch (e) {
-                                                alert("Network latency detected.");
-                                            } finally {
-                                                setSavingNotes(false);
-                                            }
-                                        }}
-                                        disabled={savingNotes}
-                                        className="px-6 py-2.5 bg-yellow-600 text-white text-[10px] font-black uppercase rounded-xl shadow-lg hover:bg-yellow-700 transform active:scale-95 transition-all disabled:opacity-50"
-                                    >
-                                        {savingNotes ? 'Saving...' : 'Lock & Save Notes 📑'}
-                                    </button>
-                                </div>
+                                    <div className="flex justify-end mt-4">
+                                        <button
+                                            onClick={saveNotes}
+                                            disabled={savingNotes}
+                                            className="px-6 py-2.5 bg-yellow-600 text-white text-[10px] font-black uppercase rounded-xl shadow-lg hover:bg-yellow-700 transform active:scale-95 transition-all disabled:opacity-50"
+                                        >
+                                            {savingNotes ? 'Saving...' : 'Lock & Save Notes 📑'}
+                                        </button>
+                                    </div>
                             </div>
                         </div>
 

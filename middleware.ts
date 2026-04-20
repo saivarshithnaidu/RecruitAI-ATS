@@ -11,6 +11,12 @@ export default withAuth(
         const MAIN_DOMAIN = "recruitaitech.in";
         const isDev = hostname.includes("localhost") || hostname.includes("127.0.0.1") || hostname.includes("vercel.app");
         
+        // 0. WWW REDIRECT (Force non-www)
+        if (!isDev && hostname.startsWith("www.")) {
+            const newHost = hostname.replace("www.", "");
+            return NextResponse.redirect(new URL(`https://${newHost}${pathname}${searchParams}`, req.url), 301);
+        }
+
         // 1. Determine Subdomain
         let subdomain = "";
         if (!isDev) {
@@ -89,9 +95,11 @@ export default withAuth(
             }
         }
 
-        // SEO
-        if (["admin", "candidate", "interview"].includes(subdomain)) {
+        // SEO control
+        if (subdomain === "admin") {
             response.headers.set("X-Robots-Tag", "noindex, nofollow");
+        } else {
+            response.headers.set("X-Robots-Tag", "index, follow");
         }
 
         return response;

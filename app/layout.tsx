@@ -50,8 +50,8 @@ export async function generateMetadata(): Promise<Metadata> {
       google: "TO_BE_ADDED",
     },
     robots: {
-      index: !isPrivateSubdomain,
-      follow: !isPrivateSubdomain,
+      index: true,
+      follow: true,
     },
   };
 }

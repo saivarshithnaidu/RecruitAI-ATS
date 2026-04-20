@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { ROLES } from '@/lib/roles';
+import { toast } from 'sonner';
 import CreateExamButton from '../exams/CreateExamButton';
 import AssignExamModal from './AssignExamModal';
 import DashboardOverview from '@/components/admin/DashboardOverview';
@@ -87,17 +88,16 @@ export default function AdminDashboardPage() {
     const [scoringId, setScoringId] = useState<string | null>(null);
 
     async function scoreApplication(applicationId: string) {
-        if (!confirm("Run AI ATS Scoring?")) return;
-        setScoringId(applicationId);
-        try {
-            const res = await fetch('/api/admin/score', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ applicationId })
-            });
-            const json = await res.json();
-            if (json.success) {
-                // @ts-ignore
+        toast.promise(
+            (async () => {
+                const res = await fetch('/api/admin/score', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ applicationId })
+                });
+                const json = await res.json();
+                if (!json.success) throw new Error(json.message);
+                
                 setApplications(prev => prev.map(app => app.id === applicationId ? {
                     ...app,
                     aiAtsScore: json.data.score,
@@ -106,12 +106,17 @@ export default function AdminDashboardPage() {
                     status: json.data.status || (json.data.score >= 70 ? 'SHORTLISTED' : 'REJECTED'),
                     ats_summary: json.data.summary
                 } : app));
-            } else alert("Error: " + json.message);
-        } finally { setScoringId(null); }
+                return json.data;
+            })(),
+            {
+                loading: 'Scoring application...',
+                success: (data: any) => `Scored ${data.score}%`,
+                error: (err: any) => `Failed: ${err.message}`,
+            }
+        );
     }
 
     async function updateStatus(applicationId: string, newStatus: string) {
-        if (!confirm(`Mark as ${newStatus}?`)) return;
         try {
             const res = await fetch('/api/admin/application/update', {
                 method: 'POST',
@@ -119,9 +124,11 @@ export default function AdminDashboardPage() {
                 body: JSON.stringify({ applicationId, status: newStatus })
             });
             const json = await res.json();
-            if (json.success) setApplications(prev => prev.map(app => app.id === applicationId ? { ...app, status: newStatus } : app));
-            else alert("Failed: " + json.message);
-        } catch (e) { alert("Network error"); }
+            if (json.success) {
+                setApplications(prev => prev.map(app => app.id === applicationId ? { ...app, status: newStatus } : app));
+                toast.success(`Updated to ${newStatus}`);
+            } else toast.error("Failed: " + json.message);
+        } catch (e) { toast.error("Network error"); }
     }
 
     const openAssignModal = (app: any) => {

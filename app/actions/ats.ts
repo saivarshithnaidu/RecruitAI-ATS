@@ -25,9 +25,17 @@ export async function generateAtsScore(applicationId: string) {
         }
 
         // 2. Check if already scored (Generate Once Rule)
-        if (app.ats_score !== null) {
-            return { success: true, message: "Already scored", score: app.ats_score, status: app.status }
+        if (app.ats_score !== null || app.atsStatus === 'COMPLETED') {
+            return { success: true, message: "Already scored", score: app.ats_score || app.aiAtsScore, status: app.atsStatus }
         }
+
+        // 2.5 Prevent Duplicate Simultaneous Triggers
+        if (app.atsStatus === 'PROCESSING') {
+            return { success: true, message: "Analysis in progress", status: 'PROCESSING' }
+        }
+
+        // Set status to processing
+        await supabaseAdmin.from('applications').update({ atsStatus: 'PROCESSING' }).eq('id', applicationId);
 
         // 3. Download Resume from Supabase Storage
         // app.resume_url stores the storage path (e.g., applications/uid/file.pdf)
