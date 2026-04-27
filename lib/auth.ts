@@ -227,7 +227,7 @@ export const authOptions: NextAuthOptions = {
                 sameSite: 'lax',
                 path: '/',
                 secure: process.env.NODE_ENV === 'production',
-                domain: process.env.NODE_ENV === 'production' ? '.recruitaitech.in' : 'localhost'
+                domain: process.env.NODE_ENV === 'production' ? '.recruitaitech.in' : undefined
             }
         },
         callbackUrl: {
@@ -236,7 +236,7 @@ export const authOptions: NextAuthOptions = {
                 sameSite: 'lax',
                 path: '/',
                 secure: process.env.NODE_ENV === 'production',
-                domain: process.env.NODE_ENV === 'production' ? '.recruitaitech.in' : 'localhost'
+                domain: process.env.NODE_ENV === 'production' ? '.recruitaitech.in' : undefined
             }
         },
         csrfToken: {
@@ -246,7 +246,7 @@ export const authOptions: NextAuthOptions = {
                 sameSite: 'lax',
                 path: '/',
                 secure: process.env.NODE_ENV === 'production',
-                domain: process.env.NODE_ENV === 'production' ? '.recruitaitech.in' : 'localhost'
+                domain: process.env.NODE_ENV === 'production' ? '.recruitaitech.in' : undefined
             }
         }
     }
