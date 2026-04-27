@@ -249,7 +249,7 @@ export async function systemAssignExam(
             examData.title || "Technical Assessment",
             autoStartTime, 
             examData.duration_minutes || 60,
-            `${process.env.NEXT_PUBLIC_APP_URL}/auth/login`,
+            `https://recruitaitech.in/auth/login`,
             assignment.id
         );
 
