@@ -66,15 +66,24 @@ export async function middleware(req: NextRequest) {
 
     let response = NextResponse.next();
 
-    // Apply rewrites for subdomains to internal folders
-    if (subdomain && !pathname.startsWith('/api') && !isPublicPath) {
+    // Apply rewrites for subdomains
+    if (subdomain && !pathname.startsWith('/api')) {
+        // If on a subdomain and hitting root "/", we usually want the dashboard of that subdomain
+        const isRoot = pathname === "/";
+        
         if (subdomain === "admin") {
+            if (!token && !isAuthPage) {
+                return NextResponse.redirect(new URL('/auth/login', req.url));
+            }
             if (!pathname.startsWith("/admin")) {
-                response = NextResponse.rewrite(new URL(`/admin${pathname === "/" ? "/dashboard" : pathname}${searchParams}`, req.url));
+                response = NextResponse.rewrite(new URL(`/admin${isRoot ? "/dashboard" : pathname}${searchParams}`, req.url));
             }
         } else if (subdomain === "candidate") {
+            if (!token && !isAuthPage) {
+                return NextResponse.redirect(new URL('/auth/login', req.url));
+            }
             if (!pathname.startsWith("/candidate")) {
-                response = NextResponse.rewrite(new URL(`/candidate${pathname === "/" ? "/dashboard" : pathname}${searchParams}`, req.url));
+                response = NextResponse.rewrite(new URL(`/candidate${isRoot ? "/dashboard" : pathname}${searchParams}`, req.url));
             }
         } else if (subdomain === "apply") {
             if (!pathname.startsWith("/apply")) {
