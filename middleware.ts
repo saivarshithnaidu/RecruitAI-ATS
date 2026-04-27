@@ -12,9 +12,7 @@ export async function middleware(req: NextRequest) {
 
     // 1. CANONICAL REDIRECT: www.recruitaitech.in -> recruitaitech.in
     if (!isDev && hostname === `www.${MAIN_DOMAIN}`) {
-        const url = req.nextUrl.clone();
-        url.hostname = MAIN_DOMAIN;
-        return NextResponse.redirect(url, 301);
+        return NextResponse.redirect(`https://${MAIN_DOMAIN}${pathname}${searchParams}`, 301);
     }
 
     // 2. GET AUTH TOKEN (Session check)
