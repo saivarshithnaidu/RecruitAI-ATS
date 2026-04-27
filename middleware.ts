@@ -10,10 +10,12 @@ export async function middleware(req: NextRequest) {
     const MAIN_DOMAIN = "recruitaitech.in";
     const isDev = hostname.includes("localhost") || hostname.includes("127.0.0.1") || hostname.includes("vercel.app");
 
+    /*
     // 1. CANONICAL REDIRECT: www.recruitaitech.in -> recruitaitech.in
     if (!isDev && hostname === `www.${MAIN_DOMAIN}`) {
         return NextResponse.redirect(`https://${MAIN_DOMAIN}${pathname}${searchParams}`, 301);
     }
+    */
 
     // 2. GET AUTH TOKEN (Session check)
     const token = await getToken({ 
@@ -29,7 +31,7 @@ export async function middleware(req: NextRequest) {
         pathname.startsWith("/features") || 
         pathname.startsWith("/privacy-policy") || 
         pathname.startsWith("/terms-conditions") ||
-        pathname.startsWith("/api/seb/config") ||
+        pathname.startsWith("/api/seb/config") || // EXPLICITLY PUBLIC
         pathname === "/candidate/exam/secure" ||
         pathname === "/robots.txt" ||
         pathname === "/sitemap.xml" ||
@@ -39,11 +41,13 @@ export async function middleware(req: NextRequest) {
     // 3. AUTH REDIRECT LOOP FIX
     // If not logged in and trying to access a protected page
     if (!token && !isAuthPage && !isApiAuth && !isPublicPath) {
+        console.log(`[Middleware] Redirecting to login: ${pathname}`);
         return NextResponse.redirect(new URL('/auth/login', req.url));
     }
 
     // If logged in and trying to access auth pages (login/register)
     if (token && isAuthPage) {
+        console.log(`[Middleware] Redirecting to dashboard: ${pathname}`);
         return NextResponse.redirect(new URL('/dashboard', req.url));
     }
 
