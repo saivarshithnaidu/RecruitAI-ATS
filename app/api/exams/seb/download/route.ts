@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
 
         // 4. Build StartURL for SEB
         // This is the URL SEB will open automatically
-        const startUrl = `${process.env.NEXT_PUBLIC_APP_URL}/candidate/exam/secure?token=${token}`;
+        const startUrl = `https://recruitaitech.in/candidate/exam/secure?token=${token}`;
 
         // 5. Generate SEB Config XML
         const xml = generateSebConfig(startUrl);
