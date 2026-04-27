@@ -17,6 +17,8 @@ const wrapContent = (content: string) => `
 </div>
 `;
 
+const APP_URL = "https://recruitaitech.in";
+
 export const EmailTemplates = {
     // 1️⃣ EMAIL VERIFICATION (OTP)
     emailVerification: (firstName: string, otp: string) => ({
@@ -104,7 +106,7 @@ export const EmailTemplates = {
                 <p style="color: #450a0a; font-size: 13px;">To ensure a fair and secure assessment environment, this exam <strong>only</strong> works inside SEB.</p>
                 <ol style="color: #450a0a; font-size: 13px; padding-left: 20px; line-height: 1.6;">
                     <li><strong>Install SEB:</strong> If not already installed, <a href="https://safeexambrowser.org/download_en.html" style="color: #b91c1c; font-weight: bold;">Download Here</a>.</li>
-                    <li><strong>Download Secure File:</strong> Get your unique entry key: <a href="${process.env.NEXT_PUBLIC_APP_URL}/api/exams/seb/download?id=${assignmentId}" style="color: #b91c1c; font-weight: bold;">[Download .seb File]</a>.</li>
+                    <li><strong>Download Secure File:</strong> Get your unique entry key: <a href="${APP_URL}/api/exams/seb/download?id=${assignmentId}" style="color: #b91c1c; font-weight: bold;">[Download .seb File]</a>.</li>
                     <li><strong>Launch:</strong> Double-click the downloaded <strong>.seb</strong> file to enter the secure exam environment.</li>
                 </ol>
                 <p style="color: #991b1b; font-size: 11px; margin-top: 10px; font-style: italic;">Note: Standard browsers like Chrome or Edge are not supported for this assessment.</p>
@@ -207,7 +209,7 @@ export const EmailTemplates = {
             <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e2e8f0;">
                 <p style="margin-top: 0;">RecruitAI is an AI-powered talent platform helping industry leaders find top engineering talent. Based on your skill set, we'd love for you to join our platform.</p>
                 <div style="margin: 20px 0;">
-                    <a href="${process.env.NEXT_PUBLIC_APP_URL}/apply" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Apply Now & Take Assessment</a>
+                    <a href="${APP_URL}/apply" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Apply Now & Take Assessment</a>
                 </div>
             </div>
 
