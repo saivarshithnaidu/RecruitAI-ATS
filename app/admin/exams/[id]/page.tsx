@@ -1,7 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import Link from "next/link";
 import { assignExam } from "@/app/actions/exams";
-import AssignButton from "././AssignCandidatesClient"; // Client Component
+import AssignButton from "./AssignCandidatesClient"; // Fixed import path
 import VerifyExamButton from "../VerifyExamButton";
 import ExamStatusPoller from "../ExamStatusPoller";
 import SlotManager from "../SlotManager";
@@ -67,10 +67,28 @@ export default async function ExamDetailsPage({ params }: { params: Promise<{ id
     }
 
     // 4. Fetch Existing Assignments
-    const { data: assignments } = await supabaseAdmin
+    const { data: rawAssignments } = await supabaseAdmin
         .from('exam_assignments')
-        .select('*, candidate_profiles(full_name, email)') // join candidate_profiles to get names
+        .select('*')
         .eq('exam_id', id);
+
+    // Manual Join to get candidate names
+    const candidateIds = rawAssignments?.map(a => a.candidate_id) || [];
+    let assignmentsWithProfiles: any[] = [];
+    
+    if (candidateIds.length > 0) {
+        const { data: profiles } = await supabaseAdmin
+            .from('candidate_profiles')
+            .select('user_id, full_name, email')
+            .in('user_id', candidateIds);
+            
+        assignmentsWithProfiles = rawAssignments?.map(a => ({
+            ...a,
+            candidate_profiles: profiles?.find(p => p.user_id === a.candidate_id)
+        })) || [];
+    }
+    
+    const assignments = assignmentsWithProfiles;
 
     // Filter out already assigned candidates from eligible list
     const assignedUserIds = new Set(assignments?.map(a => a.candidate_id));
