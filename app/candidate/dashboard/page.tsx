@@ -62,11 +62,10 @@ export default async function CandidateDashboard() {
     // Check for Exam Assignment directly (Source of Truth)
     const { data: assignment } = await supabaseAdmin
         .from('exam_assignments')
-        .select('*')
+        .select('*, exams(proctoring_config)')
         .eq('candidate_id', session.user.id)
         .in('status', ['assigned', 'in_progress'])
         .order('created_at', { ascending: false })
-        .limit(1)
         .limit(1)
         .maybeSingle();
 
@@ -245,9 +244,40 @@ export default async function CandidateDashboard() {
                                     </div>
                                 )}
 
-                                <Link href="/candidate/exam" className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition font-medium">
-                                    Take Exam Now
-                                </Link>
+                                {(() => {
+                                    // @ts-ignore
+                                    const isSebMandatory = assignment?.exams?.proctoring_config?.seb_mandatory === true;
+                                    
+                                    if (isSebMandatory) {
+                                        // Need to generate a token for the SEB config
+                                        const { generateExamToken } = require("@/lib/seb");
+                                        const sebToken = generateExamToken(assignment.id, session.user.id);
+                                        const sebLaunchUrl = `seb://recruitaitech.in/api/seb/config?token=${sebToken}`;
+                                        
+                                        return (
+                                            <div className="flex flex-col sm:flex-row gap-3">
+                                                <a 
+                                                    href={sebLaunchUrl}
+                                                    className="inline-flex items-center px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-bold shadow-md"
+                                                >
+                                                    <span className="mr-2">🔒</span> Launch Safe Exam Browser
+                                                </a>
+                                                <a 
+                                                    href={`/api/seb/config?token=${sebToken}`}
+                                                    className="inline-flex items-center px-4 py-2 text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                                                >
+                                                    Download .seb Config
+                                                </a>
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <Link href="/candidate/exam" className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition font-medium">
+                                            Take Exam Now
+                                        </Link>
+                                    );
+                                })()}
                             </div>
                         ) : currentStatus === 'SHORTLISTED' ? (
                             <div className="bg-blue-50 p-4 rounded-md border border-blue-200">
