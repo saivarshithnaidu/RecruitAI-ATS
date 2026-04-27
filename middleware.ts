@@ -10,12 +10,10 @@ export async function middleware(req: NextRequest) {
     const MAIN_DOMAIN = "recruitaitech.in";
     const isDev = hostname.includes("localhost") || hostname.includes("127.0.0.1") || hostname.includes("vercel.app");
 
-    /*
     // 1. CANONICAL REDIRECT: www.recruitaitech.in -> recruitaitech.in
     if (!isDev && hostname === `www.${MAIN_DOMAIN}`) {
         return NextResponse.redirect(`https://${MAIN_DOMAIN}${pathname}${searchParams}`, 301);
     }
-    */
 
     // 2. GET AUTH TOKEN (Session check)
     const token = await getToken({ 
